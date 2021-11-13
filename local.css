@@ -1,0 +1,255 @@
+.custom-notification-panel{
+    position: absolute;
+    top: 100%;
+    opacity: 0;
+    transition: opacity 0.2s;
+    right: 0;
+    visibility: collapse;
+    background-color: #121215bb;
+    width: 425px;
+    height: 500px;
+    overflow-y: scroll;
+    z-index: 999999999999;
+    padding: 5px 5px 0;
+    font-size: 11px;
+}
+
+.custom-notification-panel p{
+    padding: 10px;
+    font-size: 14px;
+}
+
+.custom-notification-panel .notices-body__items-item.unreaded{
+    background-color: hsl(0, 20%, 15%);
+}
+
+@media (max-width: 500px) {
+    .custom-notification-panel{
+        display: none;
+    }
+}
+
+.custom-notification-panel object > div{
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    padding: 5px;
+    margin: 0 0 4px;
+    background-color: #222328;
+}
+
+.custom-notification-panel .avatar{
+    height: 40px;
+    width: 40px;
+    display: block;
+    margin: 3px 10px 3px 3px;
+}
+
+.custom-notification-panel .smile{
+    height: 32px;
+    width: 32px;
+    display: block;
+    margin: 3px 3px 3px 10px;
+}
+
+.custom-notification-panel .notices-body__items-item{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.custom-notification-panel abbr{
+    color: #989898
+}
+
+.custom-notification-panel object a {
+    color: #3498db !important;
+}
+
+.custom-notification-panel object a:hover {
+    color: #5bb1eb !important;
+}
+
+.header__link[href='/forum/notifications/']:hover .custom-notification-panel, .custom-notification-panel:hover{
+    visibility: visible;
+    opacity: 1;
+}
+
+.custom-ts{
+    box-shadow: 0px 0px 7px 4px #0051b5; /*ТС*/
+}
+.custom-friend{
+    box-shadow: 0px 0px 7px 4px #009328; /*Подписчик*/
+}
+.custom-ignore{
+    box-shadow: 0px 0px 7px 4px #a10015; /*Игнорщик*/
+}
+
+.custom-ts.custom-friend{
+    box-shadow: -4px -4px 7px 0px #009328, 4px 4px 7px 0px #0051b5; /*ТС + подписчик*/
+}
+.custom-ts.custom-ignore{
+    box-shadow: -4px -4px 7px 0px #a10015, 4px 4px 7px 0px #0051b5; /*ТС + игнорщик*/
+}
+
+.custon-image-upload-main-container{
+    position: relative !important;
+    top: none !important;
+    bottom: 0px !important;
+    margin: auto !important;
+    width: 450px !important;
+    margin-top: 20px !important;
+}
+
+.custom-image-upload{
+    width: 100% !important;
+    height: 100px !important;
+    border: 2px #ACACAC dashed !important;
+    color: #858585 !important;
+    cursor: pointer !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.custom-image-upload input[type='file']{
+    display: none;
+}
+
+#custom-image-upload-container{
+    width: 100% !important;
+}
+
+.custom-image-preview{
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    width: 100% !important;
+}
+
+.custom-image-preview img {
+    margin-right: 10px !important;
+    max-height: 120px;
+}
+
+.custom-image-preview > div{
+    width: 100% !important;
+    display: flex;
+    flex-direction: column;
+}
+
+.custom-image-preview > div > button{
+    cursor: pointer !important;
+    padding: 5px 10px !important;
+    width: 100% !important;
+    margin-bottom: 5px !important;
+    background-color: #222224 !important;
+    color: #FFFFFF80 !important;
+}
+
+iframe.drag{
+    position: relative;
+    border: dashed 2px #A8B5BA !important;
+}
+
+iframe:after{
+    content: 'Загрузить изображение...';
+    display: block;
+    color: white;
+    position: absolute;
+
+    top: 0px;
+    left: 0px;
+}
+
+.custon-settings-icon{
+    cursor: pointer;
+}
+
+.custon-settings-icon img{
+    filter: invert(70%);
+    height: 16px;
+}
+
+#custon-settings-panel{
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    height: 100%;
+    width: 100%;
+    background-color: #121215cc;
+    display: flex;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999999999999;
+}
+#custon-settings-panel > div{
+    padding: 20px;
+    background-color: #1b1c20;
+}
+
+#custon-settings-panel h2{
+    margin-block-start: 0em !important;
+}
+
+#custon-settings-panel > div > div{
+    display: flex;
+    flex-direction: row;
+}
+
+#custom-settings-paginator{
+    display: flex;
+    gap: 5px;
+    flex-direction: column;
+    min-width: 200px;
+}
+
+#custom-settings-paginator > div{
+    cursor: pointer;
+    padding: 5px 10px;
+    background-color: #222224;
+}
+
+#custom-settings-paginator > div:hover{
+    color: white;
+}
+
+
+#custom-settings-paginator > div.selected{
+    background-color: #2b2c32;
+}
+
+#main-settings-container{
+    margin-left: 10px;
+    min-width: 500px;
+}
+
+#main-settings-container > div{
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+}
+
+#main-settings-container > div.visible{
+    display: flex;
+}
+
+#main-settings-container > div input{
+    padding: 5px;
+}
+
+#main-settings-container .row{
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+}
+
+#main-settings-container > div input[type="submit"]{
+    background-color: #121212 !important;
+    padding: 8px 16px;
+}
+
+#custom-settings-error{
+    color: red;
+}

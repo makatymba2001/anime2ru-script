@@ -136,13 +136,14 @@ app.get(/\/smile/, (req, res) => {
 
 app.post('/authorize', (req, res) => {
   let auth_token = req.body.token;
+  let auth_id = Number(req.body.id);
   if (!auth_token){
     res.sendStatus(401);
     return;
   }
-  client.query('SELECT * FROM AnimeUsers WHERE token = $1', [auth_token]).then(result => {
+  client.query('SELECT * FROM AnimeUsers WHERE token = $1 and id = $2', [auth_token, auth_id]).then(result => {
     if (!result.rowCount){
-      client.query('INSERT INTO AnimeUsers (token, thread_bg, best_smiles) VALUES ($1, null, $2) RETURNING *', [auth_token, []]).then(result => {
+      client.query('INSERT INTO AnimeUsers (id, token, thread_bg, best_smiles) VALUES ($1, $2, null, $3) RETURNING *', [auth_id, auth_token, []]).then(result => {
         res.send(result.rows[0])
         }
       )
@@ -152,6 +153,15 @@ app.post('/authorize', (req, res) => {
     }
   })
 })
-
+app.post('/getThreadsBg', (req, res) => {
+  let ids = req.body.ids;
+  client.query('SELECT id, thread_bg FROM AnimeUsers WHERE array[id] && $1', [ids]).then(result => {
+    let result_obj = {};
+    result.rows.forEach(elem => {
+      result_obj[elem.id] = elem.thread_bg;
+    })
+    res.send(result_obj)
+  })
+})
 updateServerSmileData();
 setInterval(updateServerSmileData, 300000);

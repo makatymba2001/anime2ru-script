@@ -24,23 +24,26 @@ if (document.getElementsByClassName('header__subitem-head')[0]){
 
 //authorize
 if (id){
-    createHttpRequest('POST', host + '/authorize', JSON.stringify({token: document.getElementById('token').getAttribute('data-value')}), function(http){
+    createHttpRequest('POST', host + '/getThreadsBg', JSON.stringify({ids: [818100]}), function(http){
+        var bg_result = JSON.parse(http.responseText);
         for (let thread_msg_element of document.querySelectorAll('.forum-theme__item.forum-theme__block')){
-            if (thread_msg_element.querySelector('.forum-theme__item-avatar').href.match(/\.([0-9]*)\//)[1] == id){
-                thread_msg_element.style.backgroundImage = `linear-gradient(to left, #26272ce3, #26272ce3), url('${JSON.parse(http.responseText).thread_bg}')`
+            let id = thread_msg_element.querySelector('.forum-theme__item-avatar').href.match(/\.([0-9]*)\//)[1];
+            if (bg_result[id]){
+                thread_msg_element.style.backgroundImage = `linear-gradient(to left, #26272ce3, #26272ce3), url('${bg_result[id]}')`
             }
         }
-    }, function(http){})
+    })
     var settings_button = document.createElement('li');
     settings_button.classList.add('header__item');
-    settings_button.innerHTML = `<a class='header__link custon-settings-icon' onclick="toggleCustonSettingsPanel()"><img src="${host}/settingsIcon"></a>`
+    settings_button.innerHTML = `<a class='header__link custon-settings-icon' onclick="toggleCustomSettingsPanel()"><img src="${host}/settingsIcon"></a>`
     document.getElementsByClassName('header__list')[0].prepend(settings_button)
 
     var settings_panel = document.createElement('div');
     settings_panel.id = "custon-settings-panel";
     settings_panel.innerHTML = `<div>
+        <div class='close' onclick="toggleCustomSettingsPanel()">Закрыть</div>
         <h2>Настройки</h2>
-        <span id='custom-settings-error'>123</span>
+        <span id='custom-settings-error'></span>
         <div>
         <div id='custom-settings-paginator'>
             <div class='selected'>Фон постов</div>
@@ -66,7 +69,9 @@ if (id){
             selectCustomSettingsTab(i)
         }
     }
-
+    function toggleCustomSettingsPanel(){
+        document.getElementById('custon-settings-panel').classList.toggle('visible')
+    }
     function selectCustomSettingsTab(i){
         var settings_pages = document.getElementById('main-settings-container').children;
         var settings_pagin =  document.getElementById('custom-settings-paginator').children;
@@ -117,6 +122,19 @@ if (id){
             });
         }
         
+    }
+    function removeThreadBg(){
+        createHttpRequest('POST', host + '/updateThreadBg', JSON.stringify({
+            token: token,
+            data: null,
+            link: null})
+        , function(){
+            updateSettingsStatus("Успешно!")
+            document.getElementById('thread-bg').value = '';
+        }, function(){
+            updateSettingsStatus('Произошла ошибка!')
+            document.getElementById('thread-bg').value = '';
+        })
     }
     function updateSettingsStatus(text){
         if (!text) text = '';

@@ -178,13 +178,30 @@ iframe:after{
     height: 100%;
     width: 100%;
     background-color: #121215cc;
-    display: flex;
     display: none;
     align-items: center;
     justify-content: center;
     z-index: 999999999999999;
 }
+
+#custon-settings-panel .close{
+    transition: filter 0.2s;
+    filter: brightness(60%);
+    cursor: pointer;
+    position: absolute;
+    right: 10px;
+    top: 10px;
+}
+
+#custon-settings-panel .close:hover{
+    filter: brightness(100%);
+}
+
+#custon-settings-panel.visible{
+    display: flex;
+}
 #custon-settings-panel > div{
+    position: relative;
     padding: 20px;
     background-color: #1b1c20;
 }
@@ -236,6 +253,10 @@ iframe:after{
 }
 
 #main-settings-container > div input{
+    outline: none;
+    border: none;
+    color: #c2c2c4;
+    background-color: #222224;
     padding: 5px;
 }
 
@@ -246,6 +267,7 @@ iframe:after{
 }
 
 #main-settings-container > div input[type="submit"]{
+    cursor: pointer;
     background-color: #121212 !important;
     padding: 8px 16px;
 }

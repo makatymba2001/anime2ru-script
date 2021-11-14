@@ -6,6 +6,7 @@ const PORT = process.env.PORT || 5000;
 const bodyParser = require('body-parser');
 const imgur = require('imgur');
 const fetch = require('node-fetch')
+const crypto = require('crypto');
 
 imgur.setClientId(process.env.IMGUR_CLIENT_ID);
 imgur.setAPIUrl('https://api.imgur.com/3/');
@@ -86,13 +87,13 @@ app.post('/uploadImage', (req, res) => {
 })
 app.post('/updateThreadBg', (req, res) => {
   let auth_token = req.body.token;
-  client.query('SELECT * FROM AnimeUsers WHERE token = $1', [auth_token]).then(result => {
+  client.query('SELECT * FROM AnimeUsers WHERE token = $1 LIMIT 1', [auth_token]).then(result => {
     if (!result.rowCount) {
       res.sendStatus(401);
       return;
     }
     if (req.body.data === null){
-      client.query('UPDATE AnimeUsers SET thread_bg = $1 WHERE token = $2', [null, auth_token]).then(result => {
+      client.query('UPDATE AnimeUsers SET threads_bg = $1 WHERE token = $2', [null, auth_token]).then(result => {
         res.sendStatus(200);
       })
     }
@@ -103,13 +104,13 @@ app.post('/updateThreadBg', (req, res) => {
       })
       .then(data => {
         if (!data) return;
-        client.query('UPDATE AnimeUsers SET thread_bg = $1 WHERE token = $2', [data.link, auth_token]).then(result => {
+        client.query('UPDATE AnimeUsers SET threads_bg = $1 WHERE token = $2', [data.link, auth_token]).then(result => {
           res.sendStatus(200);
         })
       })
     }
     else if (req.body.link){
-      client.query('UPDATE AnimeUsers SET thread_bg = $1 WHERE token = $2', [req.body.link, auth_token]).then(result => {
+      client.query('UPDATE AnimeUsers SET threads_bg = $1 WHERE token = $2', [req.body.link, auth_token]).then(result => {
         res.sendStatus(200);
       })
     }
@@ -138,30 +139,39 @@ app.get(/\/smile/, (req, res) => {
 })
 
 app.post('/authorize', (req, res) => {
-  let auth_token = req.body.token;
+  let auth_password = crypto.createHash('md5').update(req.body.password).digest('hex');
   let auth_id = Number(req.body.id);
+  let auth_token = req.body.token;
+  let token = crypto.randomBytes(48).toString('hex') + Date.now().toString();
   if (!auth_token){
-    res.sendStatus(401);
-    return;
-  }
-  client.query('SELECT * FROM AnimeUsers WHERE token = $1 and id = $2', [auth_token, auth_id]).then(result => {
-    if (!result.rowCount){
-      client.query('INSERT INTO AnimeUsers (id, token, thread_bg, best_smiles) VALUES ($1, $2, null, $3) RETURNING *', [auth_id, auth_token, []]).then(result => {
+    client.query('SELECT token FROM AnimeUsers WHERE password = $1 and id = $2 LIMIT 1', [auth_password, auth_id]).then(result => {
+      if (!result.rowCount){
+        client.query('INSERT INTO AnimeUsers (id, password, token, threads_bg) VALUES ($1, $2, $3, null) RETURNING token', [auth_id, auth_password, token])
+        .catch(e => {
+          res.sendStatus(403);
+        })
+        .then(result => {
+          if (!result) return;
+          res.send(result.rows[0])
+        })
+      }
+      else{
         res.send(result.rows[0])
-        }
-      )
-    }
-    else{
-      res.send(result.rows[0])
-    }
-  })
+      }
+    })
+  }
+  else{
+    client.query('SELECT token FROM AnimeUsers WHERE token = $1', [auth_token]).then(result => {
+      result.rowCount ? res.sendStatus(200) : res.sendStatus(401);
+    })
+  }
 })
 app.post('/getThreadsBg', (req, res) => {
   let ids = req.body.ids;
-  client.query('SELECT id, thread_bg FROM AnimeUsers WHERE array[id] && $1', [ids]).then(result => {
+  client.query('SELECT id, threads_bg FROM AnimeUsers WHERE array[id] && $1', [ids]).then(result => {
     let result_obj = {};
     result.rows.forEach(elem => {
-      result_obj[elem.id] = elem.thread_bg;
+      result_obj[elem.id] = elem.threads_bg;
     })
     res.send(result_obj)
   })

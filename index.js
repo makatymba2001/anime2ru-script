@@ -161,7 +161,7 @@ app.post('/authorize', (req, res) => {
     })
   }
   else{
-    client.query('SELECT token FROM AnimeUsers WHERE token = $1', [auth_token]).then(result => {
+    client.query('SELECT token, id FROM AnimeUsers WHERE token = $1', [auth_token]).then(result => {
       result.rowCount ? res.sendStatus(200) : res.sendStatus(401);
     })
   }

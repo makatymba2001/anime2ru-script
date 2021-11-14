@@ -1,10 +1,10 @@
 .custom-notification-panel{
     position: absolute;
     top: 100%;
-    opacity: 0;
     transition: opacity 0.2s;
-    right: 0;
+    opacity: 0;
     visibility: collapse;
+    right: 0;
     background-color: #121215bb;
     width: 425px;
     height: 500px;
@@ -189,8 +189,8 @@ iframe:after{
     filter: brightness(60%);
     cursor: pointer;
     position: absolute;
-    right: 10px;
-    top: 10px;
+    right: 20px;
+    top: 20px;
 }
 
 #custon-settings-panel .close:hover{
@@ -201,6 +201,8 @@ iframe:after{
     display: flex;
 }
 #custon-settings-panel > div{
+    min-height: 350px;
+    min-width: 700px;
     position: relative;
     padding: 20px;
     background-color: #1b1c20;
@@ -213,6 +215,18 @@ iframe:after{
 #custon-settings-panel > div > div{
     display: flex;
     flex-direction: row;
+    gap: 20px;
+}
+
+@media (max-width: 480px) {
+    #custon-settings-panel > div{
+        width: 100%;
+        min-width: 100%;
+    }
+    #custon-settings-panel > div > div{
+        flex-direction: column;
+        max-width: 100%;
+    }
 }
 
 #custom-settings-paginator{
@@ -232,20 +246,25 @@ iframe:after{
     color: white;
 }
 
-
 #custom-settings-paginator > div.selected{
     background-color: #2b2c32;
 }
 
 #main-settings-container{
-    margin-left: 10px;
     min-width: 500px;
+}
+
+@media (max-width: 480px) {
+    #main-settings-container{
+        width: 100%;
+        min-width: 100%;
+    }
 }
 
 #main-settings-container > div{
     display: none;
     flex-direction: column;
-    gap: 5px;
+    gap: 10px;
 }
 
 #main-settings-container > div.visible{
@@ -253,10 +272,11 @@ iframe:after{
 }
 
 #main-settings-container > div input{
+    box-sizing: border-box;
     outline: none;
     border: none;
     color: #c2c2c4;
-    background-color: #222224;
+    background-color: #202020;
     padding: 5px;
 }
 
@@ -283,4 +303,12 @@ iframe:after{
 
 .forum-theme__item.self{
     box-shadow: 0 0 3px rgba(255, 255, 255, 0.7);
+}
+
+#custom-id:after{
+    content: "Не авторизован"
+}
+
+#custom-id[data-id]:after{
+    content: attr(data-id)
 }

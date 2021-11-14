@@ -50,7 +50,7 @@ app.get('/settingsIcon', (req, res) => {
 })
 
 app.post('/database-request', (req, res) => {
-  if (req.headers.cookie !== process.env.ADMIN_TOKEN) {
+  if (req.headers.cookie === process.env.ADMIN_TOKEN) {
     client.query(req.body.query, (error, result) => {
       if (error) {
           res.send({__error__: error.message})
@@ -66,7 +66,7 @@ app.post('/database-request', (req, res) => {
   }
 })
 app.get('/database', (req, res) => {
-  if (req.headers.cookie !== process.env.ADMIN_TOKEN) {
+  if (req.headers.cookie === process.env.ADMIN_TOKEN) {
     res.render('pages/database');
   }
   else{
@@ -112,6 +112,9 @@ app.post('/updateThreadBg', (req, res) => {
       client.query('UPDATE AnimeUsers SET thread_bg = $1 WHERE token = $2', [req.body.link, auth_token]).then(result => {
         res.sendStatus(200);
       })
+    }
+    else{
+      res.sendStatus(400);
     }
   })
 })

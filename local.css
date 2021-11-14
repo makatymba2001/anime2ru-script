@@ -273,5 +273,9 @@ iframe:after{
 }
 
 #custom-settings-error{
-    color: red;
+    color: rgb(200, 0, 0);
+}
+
+.forum-theme__item.self{
+    box-shadow: 0 0 3px rgba(255, 255, 255, 0.4);
 }

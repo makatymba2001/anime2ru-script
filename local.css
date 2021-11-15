@@ -298,11 +298,11 @@ iframe:after{
 
 .forum-theme__item{
     background-size: cover !important;
-    background-position: center center !important;
 }
 
 .forum-theme__item.self{
     box-shadow: 0 0 3px rgba(255, 255, 255, 0.7);
+    border-radius: 5px;
 }
 
 #custom-id:after{
@@ -311,4 +311,30 @@ iframe:after{
 
 #custom-id[data-id]:after{
     content: attr(data-id)
+}
+
+#thread-bg-pos-range, #thread-bg-br-range{
+    width: 100%;
+}
+
+#thread-bg-pos-range:disabled{
+    opacity: 0.4;
+}
+
+#thread-bg-preview{
+    padding: 20px;
+    display: block !important;
+    width: 100%;
+    background-size: cover;
+}
+
+.preview-left-panel{
+    font-size: 9px;
+    width: 60px;
+    display: flex !important;
+    flex-direction: column;
+}
+
+.preview-left-panel img{
+    height: 60px;
 }

@@ -75,6 +75,10 @@ app.get('/database', (req, res) => {
   }
 })
 
+Math.onRange = (min, value, max) => {
+  return value >= min && value <= max;
+}
+
 app.post('/uploadImage', (req, res) => {
   imgur.uploadBase64(req.body.data.substring(req.body.data.indexOf(',') + 1), null, (Date.now()).toString())
   .catch(e => {
@@ -87,13 +91,25 @@ app.post('/uploadImage', (req, res) => {
 })
 app.post('/updateThreadBg', (req, res) => {
   let auth_token = req.body.token;
+  let br = req.body.br ?? 99999;
+  let pos = req.body.pos || 99999;
+  if (!Math.onRange(0, br, 100) || !Math.onRange(-3, Number(pos), 100)){
+    res.sendStatus(400);
+    return;
+  }
+  let pos_enum = {
+    "-1": 'top',
+    "-2": "center",
+    "-3": "bottom"
+  }
+  pos = pos_enum[pos] || (pos + '%');
   client.query('SELECT * FROM AnimeUsers WHERE token = $1 LIMIT 1', [auth_token]).then(result => {
     if (!result.rowCount) {
       res.sendStatus(401);
       return;
     }
     if (req.body.data === null){
-      client.query('UPDATE AnimeUsers SET threads_bg = $1 WHERE token = $2', [null, auth_token]).then(result => {
+      client.query('UPDATE AnimeUsers SET (threads_bg, thread_bg_br, thread_bg_position) = ($1, DEFAULT, DEFAULT) WHERE token = $4', [null, auth_token]).then(result => {
         res.sendStatus(200);
       })
     }
@@ -104,13 +120,13 @@ app.post('/updateThreadBg', (req, res) => {
       })
       .then(data => {
         if (!data) return;
-        client.query('UPDATE AnimeUsers SET threads_bg = $1 WHERE token = $2', [data.link, auth_token]).then(result => {
+        client.query('UPDATE AnimeUsers SET (threads_bg, thread_bg_br, thread_bg_position) = ($1, $2, $3) WHERE token = $4', [data.link, br, pos, auth_token]).then(result => {
           res.sendStatus(200);
         })
       })
     }
     else if (req.body.link){
-      client.query('UPDATE AnimeUsers SET threads_bg = $1 WHERE token = $2', [req.body.link, auth_token]).then(result => {
+      client.query('UPDATE AnimeUsers SET (threads_bg, thread_bg_br, thread_bg_position) = ($1, $2, $3) WHERE token = $4', [req.body.link, br, pos, auth_token]).then(result => {
         res.sendStatus(200);
       })
     }
@@ -141,12 +157,9 @@ let register_buffer = {};
 app.post('/authorize', (req, res) => {
   let b = req.body;
   if (!b.token && !b.password && !b.id){
-    res.sendStatus(400);
+    res.sendStatus(401);
     return;
   }
-  let auth_password = null;
-  if (b.password) auth_password = crypto.createHash('md5').update(b.password).digest('hex');
-  let auth_id = Number(b.id);
   let auth_token = b.token;
   let token = crypto.randomBytes(32).toString('hex') + Date.now().toString();
   if (auth_token){
@@ -157,6 +170,9 @@ app.post('/authorize', (req, res) => {
   }
   else{
     // Пользователь не имеет токен? Проверить по паролю и id
+    let auth_password = null;
+    if (b.password) auth_password = crypto.createHash('md5').update(b.password).digest('hex');
+    let auth_id = Number(b.id);
     client.query('SELECT id, token FROM AnimeUsers WHERE password = $1 and id = $2 LIMIT 1', [auth_password, auth_id]).then(result => {
       if (!result.rowCount){
         // Начать регистрацию
@@ -184,7 +200,7 @@ app.post('/confirmRegister', (req, res) => {
   .then(data => {
     if (data.includes('/' + auth_id + '.')){
       // Регистрация пройдена
-      client.query('INSERT INTO AnimeUsers (id, password, token, threads_bg) VALUES ($1, $2, $3, null) RETURNING token', [auth_id, register_buffer[auth_id].password, register_buffer[auth_id].token])
+      client.query('INSERT INTO AnimeUsers (id, password, token, threads_bg, thread_bg_br, thread_bg_position) VALUES ($1, $2, $3, null, DEFAULT, DEFAULT) RETURNING token', [auth_id, register_buffer[auth_id].password, register_buffer[auth_id].token])
       .catch(e => {
         res.sendStatus(403);
       })
@@ -202,10 +218,11 @@ app.post('/confirmRegister', (req, res) => {
 
 app.post('/getThreadsBg', (req, res) => {
   let ids = req.body.ids;
-  client.query('SELECT id, threads_bg FROM AnimeUsers WHERE array[id] && $1', [ids]).then(result => {
+  client.query('SELECT id, threads_bg, thread_bg_br, thread_bg_position FROM AnimeUsers WHERE array[id] && $1', [ids]).then(result => {
     let result_obj = {};
     result.rows.forEach(elem => {
-      result_obj[elem.id] = elem.threads_bg;
+      let br = 1 - (elem.thread_bg_br / 100);
+      result_obj[elem.id] = elem.threads_bg ? `background-image: linear-gradient(to left, rgba(38, 39, 44, ${br}), rgba(38, 39, 44, ${br})), url(${elem.threads_bg}); background-position-y: ${elem.thread_bg_position};` : null;
     })
     res.send(result_obj)
   })

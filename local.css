@@ -147,6 +147,10 @@
     color: #FFFFFF80 !important;
 }
 
+iframe{
+    border: 2px dashed transparent;
+}
+
 iframe.drag{
     position: relative;
     border: dashed 2px #A8B5BA !important;
@@ -288,6 +292,11 @@ iframe:after{
     gap: 5px;
 }
 
+#main-settings-container .row.checkbox{
+    align-items: center;
+}
+
+
 #main-settings-container > div input[type="submit"]{
     cursor: pointer;
     background-color: #121212 !important;
@@ -339,4 +348,8 @@ iframe:after{
 
 .preview-left-panel img{
     height: 60px;
+}
+
+.item.control{
+    white-space: nowrap;
 }

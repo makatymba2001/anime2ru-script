@@ -261,17 +261,17 @@ iframe:after{
     }
 }
 
-#main-settings-container > div{
+#main-settings-container div{
     display: none;
     flex-direction: column;
     gap: 10px;
 }
 
-#main-settings-container > div.visible{
+#main-settings-container div.visible{
     display: flex;
 }
 
-#main-settings-container > div input{
+#main-settings-container div input{
     box-sizing: border-box;
     outline: none;
     border: none;

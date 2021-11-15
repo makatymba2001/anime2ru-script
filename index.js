@@ -7,6 +7,7 @@ const bodyParser = require('body-parser');
 const imgur = require('imgur');
 const fetch = require('node-fetch')
 const crypto = require('crypto');
+const {XMLHttpRequest} = require('xmlhttprequest');
 
 imgur.setClientId(process.env.IMGUR_CLIENT_ID);
 imgur.setAPIUrl('https://api.imgur.com/3/');
@@ -137,35 +138,69 @@ app.get(/\/smile/, (req, res) => {
     res.sendStatus(404);
   }
 })
-
+let register_buffer = {};
 app.post('/authorize', (req, res) => {
-  let auth_password = crypto.createHash('md5').update(req.body.password).digest('hex');
-  let auth_id = Number(req.body.id);
-  let auth_token = req.body.token;
-  let token = crypto.randomBytes(48).toString('hex') + Date.now().toString();
-  if (!auth_token){
-    client.query('SELECT token FROM AnimeUsers WHERE password = $1 and id = $2 LIMIT 1', [auth_password, auth_id]).then(result => {
+  let b = req.body;
+  if (!b.token && !b.password && !b.id){
+    res.sendStatus(400);
+    return;
+  }
+  let auth_password = null;
+  if (b.password) auth_password = crypto.createHash('md5').update(b.password).digest('hex');
+  let auth_id = Number(b.id);
+  let auth_token = b.token;
+  let token = crypto.randomBytes(32).toString('hex') + Date.now().toString();
+  if (auth_token){
+    // Пользователь имеет токен? Проверить его на валидность и вернуть юзера
+    client.query('SELECT id FROM AnimeUsers WHERE token = $1', [auth_token]).then(result => {
+      result.rowCount ? res.send({id: result.rows[0].id}) : res.sendStatus(401);
+    })
+  }
+  else{
+    // Пользователь не имеет токен? Проверить по паролю и id
+    client.query('SELECT id, token FROM AnimeUsers WHERE password = $1 and id = $2 LIMIT 1', [auth_password, auth_id]).then(result => {
       if (!result.rowCount){
-        client.query('INSERT INTO AnimeUsers (id, password, token, threads_bg) VALUES ($1, $2, $3, null) RETURNING token', [auth_id, auth_password, token])
-        .catch(e => {
-          res.sendStatus(403);
-        })
-        .then(result => {
-          if (!result) return;
-          res.send(result.rows[0])
-        })
+        // Начать регистрацию
+        register_buffer[auth_id] = {password: auth_password, token: token};
+        res.send({need_confirm: true});
       }
       else{
+        // Авторизован по id и паролю
         res.send(result.rows[0])
       }
     })
   }
-  else{
-    client.query('SELECT token, id FROM AnimeUsers WHERE token = $1', [auth_token]).then(result => {
-      result.rowCount ? res.sendStatus(200) : res.sendStatus(401);
-    })
-  }
 })
+
+app.post('/confirmRegister', (req, res) => {
+  let auth_id = req.body.id;
+  let headers = new fetch.Headers();
+  headers.append('Content-Type', 'application/json');
+  headers.append("X-Requested-With", "XMLHttpRequest");
+  fetch("https://dota2.ru/forum/api/forum/showPostRates", {method: "POST", headers: headers, body: JSON.stringify({pid: 26000919, smile_id: "1538"})})
+  .catch(e => {
+    res.sendStatus(500)
+  })
+  .then(r => { if (r) return r.text()})
+  .then(data => {
+    if (data.includes('/' + auth_id + '.')){
+      // Регистрация пройдена
+      client.query('INSERT INTO AnimeUsers (id, password, token, threads_bg) VALUES ($1, $2, $3, null) RETURNING token', [auth_id, register_buffer[auth_id].password, register_buffer[auth_id].token])
+      .catch(e => {
+        res.sendStatus(403);
+      })
+      .then(result => {
+        if (!result) return;
+        res.send(result.rows[0])
+      })
+    }
+    else{
+      // Регистрация не пройдена
+      res.sendStatus(404);
+    }
+  })
+})
+
 app.post('/getThreadsBg', (req, res) => {
   let ids = req.body.ids;
   client.query('SELECT id, threads_bg FROM AnimeUsers WHERE array[id] && $1', [ids]).then(result => {
@@ -176,5 +211,25 @@ app.post('/getThreadsBg', (req, res) => {
     res.send(result_obj)
   })
 })
+
+app.post('/changePassword', (req, res) => {
+  let b = req.body;
+  if (!b.old_password || !b.new_password || !b.token){
+    res.sendStatus(401);
+    return;
+  }
+  let old_p = crypto.createHash('md5').update(b.old_password).digest('hex');
+  let new_p = crypto.createHash('md5').update(b.new_password).digest('hex');
+  client.query('SELECT * FROM AnimeUsers WHERE token = $1 and password = $2 LIMIT 1', [b.token, old_p]).then(result => {
+    if (!result.rowCount){
+      res.sendStatus(404);
+      return;
+    }
+    client.query('UPDATE AnimeUsers set password = $1 WHERE token = $2 and password = $3', [new_p, b.token, old_p]).then(result => {
+      res.sendStatus(200);
+    })
+  });
+})
+
 updateServerSmileData();
 setInterval(updateServerSmileData, 300000);

@@ -7,7 +7,6 @@ const bodyParser = require('body-parser');
 const imgur = require('imgur');
 const fetch = require('node-fetch')
 const crypto = require('crypto');
-const {XMLHttpRequest} = require('xmlhttprequest');
 
 imgur.setClientId(process.env.IMGUR_CLIENT_ID);
 imgur.setAPIUrl('https://api.imgur.com/3/');

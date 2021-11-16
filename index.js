@@ -106,10 +106,17 @@ app.post('/uploadImage', (req, res) => {
 
 let server_smiles_data = {};
 function updateServerSmileData(){
-  fetch('https://dota2.ru/replies/get_smiles').then(res => {return res.json()}).then(data => {
-    Object.values(data.smiles.smiles).flat().forEach(smile_data => {
-      server_smiles_data[smile_data.id] = 'https://dota2.ru/img/forum/emoticons/' + smile_data.filename;
-    })
+  fetch('https://dota2.ru/replies/get_smiles').then(res => {
+    return res.text()
+  }).then(data => {
+    if (data?.trim()?.startsWith('<')){
+      setTimeout(updateServerSmileData, 5000)
+    }
+    else{
+      Object.values(JSON.parse(data).smiles.smiles).flat().forEach(smile_data => {
+        server_smiles_data[smile_data.id] = 'https://dota2.ru/img/forum/emoticons/' + smile_data.filename;
+      })
+    }
   })
 }
 app.get(/\/smile/, (req, res) => {
@@ -340,7 +347,7 @@ app.post('/updateStyles', (req, res) => {
   b.old_style = b.old_style === true ? true : false;
   b.quick_reply = b.quick_reply === true ? true : false;
   b.simple_main = b.simple_main === true ? true : false;
-  b.sticky_header = b.simple_main === true ? true : false;
+  b.sticky_header = b.sticky_header === true ? true : false;
   client.query('UPDATE AnimeUsers SET (old_style, quick_reply, simple_main, sticky_header) = ($1, $2, $3, $4) WHERE token = $5', [b.old_style, b.quick_reply, b.simple_main, b.sticky_header, b.token])
   .catch(e => {
     res.sendStatus(400);

@@ -1,4 +1,7 @@
+@charset "utf-8";
+
 .custom-notification-panel{
+    display: block !important;
     position: absolute;
     top: 100%;
     transition: opacity 0.2s;
@@ -25,7 +28,7 @@
 
 @media (max-width: 500px) {
     .custom-notification-panel{
-        display: none;
+        display: none !important;
     }
 }
 
@@ -36,6 +39,12 @@
     padding: 5px;
     margin: 0 0 4px;
     background-color: #222328;
+}
+
+.custom-notification-panel #mark-as-read{
+    justify-content: center;
+    width: 100%;
+    pointer-events: none;
 }
 
 .custom-notification-panel .avatar{
@@ -148,7 +157,7 @@
 }
 
 iframe{
-    border: 2px dashed transparent;
+    border: 2px dashed transparent !important;
 }
 
 iframe.drag{
@@ -214,9 +223,11 @@ iframe:after{
 
 #custon-settings-panel h2{
     margin-block-start: 0em !important;
+    margin-block-start: 0.6em !important;
 }
 
 #custon-settings-panel > div > div{
+    margin-top: 5px;
     display: flex;
     flex-direction: row;
     gap: 20px;
@@ -303,8 +314,12 @@ iframe:after{
     padding: 8px 16px;
 }
 
-#custom-settings-error{
+#custom-settings-status{
     color: rgb(200, 0, 0);
+}
+
+#custom-settings-status.success{
+    color: rgb(0, 200, 0);
 }
 
 .forum-theme__item{
@@ -352,4 +367,18 @@ iframe:after{
 
 .item.control{
     white-space: nowrap;
+}
+
+.spoiler-btn:before{
+    content: "Спойлер:"
+}
+
+.forum-theme__item[style] .forum-theme__item-block-mess{
+    height: 100%;
+    justify-content: flex-start;
+}
+
+.onlineMarker {
+    background: #379036;
+    border: none;
 }

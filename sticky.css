@@ -1,0 +1,26 @@
+.header{
+    position: fixed;
+    padding: 0;
+    top: 0px;
+    left: 50%;
+    width: 100%;
+    height: auto;
+    max-width: 1220px;
+    transform: translateX(-50%);
+    z-index: 100000;
+    box-shadow: 0 -1px 5px  2px #00000055;
+}
+
+.header__subb{
+    margin-bottom: 0px;
+}
+
+main{
+    padding-top: 75px !important;
+}
+
+@media (max-width: 700px){
+    main{
+        padding-top: 95px !important;
+    }
+}

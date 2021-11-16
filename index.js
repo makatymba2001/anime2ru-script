@@ -12,7 +12,7 @@ imgur.setClientId(process.env.IMGUR_CLIENT_ID);
 imgur.setAPIUrl('https://api.imgur.com/3/');
 
 const app = express();
-app.use(bodyParser.json({limit: '50mb'}));
+app.use(bodyParser.json({limit: '10mb'}));
 app.use(express.static(path.join(__dirname, 'static')))
 app.set('views', path.join(__dirname, 'static'))
 app.set('view engine', 'ejs')
@@ -53,6 +53,10 @@ app.get('/quickReply', (req, res) => {
 app.get('/simpleMain', (req, res) => {
   res.setHeader('Content-Type', 'text/css');
   res.sendFile(__dirname + '/simple.css')
+})
+app.get('/stickyHeader', (req, res) => {
+  res.setHeader('Content-Type', 'text/css');
+  res.sendFile(__dirname + '/sticky.css')
 })
 
 app.get('/settingsIcon', (req, res) => {
@@ -209,8 +213,8 @@ app.post('/getThreadsBg', (req, res) => {
   const parser = (result, ignoring) => {
     let result_obj = {};
     let ignore_array = [];
-    if (ignoring){
-      ignore_array = ignoring.rows[0].threads_bg_ignore;
+    if (ignoring?.rows && ignoring?.rows[0]){
+      ignore_array = ignoring.rows[0].threads_bg_ignore || [];
     }
     result.rows.forEach(elem => {
       let br = 1 - (elem.thread_bg_br / 100);
@@ -285,6 +289,10 @@ app.post('/updateThreadBg', (req, res) => {
 app.post('/addThreadBgIgnore', (req, res) => {
   let auth_token = req.body.token;
   let t_id = req.body.id;
+  if (t_id == -1) {
+    res.sendStatus(400);
+    return;
+  }
   client.query('SELECT threads_bg_ignore FROM AnimeUsers WHERE token = $1 LIMIT 1', [auth_token]).then(result => {
     if (!result.rowCount){
       res.sendStatus(401);
@@ -321,7 +329,7 @@ app.post('/removeThreadBgIgnore', (req, res) => {
 // ------------------------------
 
 app.post('/styles', (req, res) => {
-  client.query('SELECT old_style, quick_reply, simple_main FROM AnimeUsers WHERE token = $1', [req.body.token], function(error, result){
+  client.query('SELECT old_style, quick_reply, simple_main, sticky_header FROM AnimeUsers WHERE token = $1', [req.body.token], function(error, result){
     if (error) res.sendStatus(404);
     if (result) res.send(result.rows[0])
   })
@@ -332,7 +340,8 @@ app.post('/updateStyles', (req, res) => {
   b.old_style = b.old_style === true ? true : false;
   b.quick_reply = b.quick_reply === true ? true : false;
   b.simple_main = b.simple_main === true ? true : false;
-  client.query('UPDATE AnimeUsers SET (old_style, quick_reply, simple_main) = ($1, $2, $3) WHERE token = $4', [b.old_style, b.quick_reply, b.simple_main, b.token])
+  b.sticky_header = b.simple_main === true ? true : false;
+  client.query('UPDATE AnimeUsers SET (old_style, quick_reply, simple_main, sticky_header) = ($1, $2, $3, $4) WHERE token = $5', [b.old_style, b.quick_reply, b.simple_main, b.sticky_header, b.token])
   .catch(e => {
     res.sendStatus(400);
   })

@@ -1,10 +1,7 @@
+@charset "utf-8";
+
 .tournament, .streams, .video, .memes, .index__right-bar, .owl-matches.new-m-matches.overflow-list{
     display: none;
-}
-
-.forum .forum__item .component-block__img {
-    display: block;
-    margin: 10px 10px 10px 0;
 }
 
 .index__left-bar{
@@ -20,11 +17,16 @@
     }
 }
 
-.component-block{
+.index__left-bar .component-block{
     width: 100%;
 }
 
-.forum__item .short{
+.index__left-bar .forum .forum__item .component-block__img {
+    display: block;
+    margin: 10px 10px 10px 0;
+}
+
+.index__left-bar .forum__item .short{
     margin: 0;
     position: static;
     display: block;

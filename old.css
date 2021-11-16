@@ -844,6 +844,12 @@ button.poll-block__body-item:hover{
     margin: 0;
 }
 
+@media (max-width: 880px){
+    .forum-theme__item-avatar{
+        width: auto;
+    }
+}
+
 .forum-theme__item-avatar > img{
     max-width: 140px;
     margin: 5px;

@@ -7,15 +7,27 @@ const bodyParser = require('body-parser');
 const imgur = require('imgur');
 const fetch = require('node-fetch')
 const crypto = require('crypto');
+const fs = require('fs');
 
 imgur.setClientId(process.env.IMGUR_CLIENT_ID);
 imgur.setAPIUrl('https://api.imgur.com/3/');
 
 const app = express();
 app.use(bodyParser.json({limit: '10mb'}));
-app.use(express.static(path.join(__dirname, 'static')))
-app.set('views', path.join(__dirname, 'static'))
-app.set('view engine', 'ejs')
+app.use(express.static(path.join(__dirname, 'static')));
+app.set('views', path.join(__dirname, 'static'));
+app.set('view engine', 'ejs');
+
+let local_css = fs.readFileSync('./local.css', {encoding: 'utf-8'});
+local_css =  local_css.replace(/    /g, '').replace(/\s{2,}/g, '');
+let old_css = fs.readFileSync('./old.css', {encoding: 'utf-8'});
+old_css =  old_css.replace(/    /g, '').replace(/\s{2,}/g, '');
+let quick_css = fs.readFileSync('./quick.css', {encoding: 'utf-8'});
+quick_css =  quick_css.replace(/    /g, '').replace(/\s{2,}/g, '');
+let simple_css = fs.readFileSync('./simple.css', {encoding: 'utf-8'});
+simple_css =  simple_css.replace(/    /g, '').replace(/\s{2,}/g, '');
+let sticky_css = fs.readFileSync('./sticky.css', {encoding: 'utf-8'});
+sticky_css =  sticky_css.replace(/    /g, '').replace(/\s{2,}/g, '');
 
 const client = new Client({
   connectionString: process.env.DATABASE_URL,
@@ -23,7 +35,6 @@ const client = new Client({
     rejectUnauthorized: false
   }
 });
-
 client.connect();
 
 app.listen(PORT, () => console.log(`Listening on ${ PORT }`));
@@ -34,10 +45,28 @@ app.use(function(req, res, next) {
   next();
 });
 
+// ------------------------------
+
 app.get('/script', (req, res) => {
   res.setHeader('Content-Type', 'application/javascript');
   res.sendFile(__dirname + '/local.js')
 })
+app.get('/base_style', (req, res) => {
+  res.status(200).send(local_css)
+})
+app.get('/old_style', (req, res) => {
+  res.status(200).send(old_css)
+})
+app.get('/quick_reply', (req, res) => {
+  res.status(200).send(quick_css)
+})
+app.get('/simple_main', (req, res) => {
+  res.status(200).send(simple_css)
+})
+app.get('/sticky_header', (req, res) => {
+  res.status(200).send(sticky_css)
+})
+
 app.get('/style', (req, res) => {
   res.setHeader('Content-Type', 'text/css');
   res.sendFile(__dirname + '/local.css')
@@ -58,6 +87,8 @@ app.get('/stickyHeader', (req, res) => {
   res.setHeader('Content-Type', 'text/css');
   res.sendFile(__dirname + '/sticky.css')
 })
+
+// ------------------------------
 
 app.get('/settingsIcon', (req, res) => {
   res.setHeader('Content-Header', 'application/svg+xml');
@@ -92,6 +123,10 @@ app.get('/database', (req, res) => {
 // ------------------------------
 
 app.post('/uploadImage', (req, res) => {
+  if (!req.body){
+    res.sendStatus(400);
+    return;
+  }
   imgur.uploadBase64(req.body.data.substring(req.body.data.indexOf(',') + 1), null, (Date.now()).toString())
   .catch(e => {
     res.sendStatus(500);
@@ -131,6 +166,10 @@ app.get(/\/smile/, (req, res) => {
 // ------------------------------
 
 app.post('/authorize', (req, res) => {
+  if (!req.body){
+    res.sendStatus(400);
+    return;
+  }
   let b = req.body;
   if (!b.token && !b.password && !b.id){
     res.sendStatus(401);
@@ -165,6 +204,10 @@ app.post('/authorize', (req, res) => {
 
 let register_buffer = {};
 app.post('/confirmRegister', (req, res) => {
+  if (!req.body){
+    res.sendStatus(400);
+    return;
+  }
   let auth_id = req.body.id;
   let headers = new fetch.Headers();
   headers.append('Content-Type', 'application/json');
@@ -194,6 +237,10 @@ app.post('/confirmRegister', (req, res) => {
 })
 
 app.post('/changePassword', (req, res) => {
+  if (!req.body){
+    res.sendStatus(400);
+    return;
+  }
   let b = req.body;
   if (!b.old_password || !b.new_password || !b.token){
     res.sendStatus(401);
@@ -215,6 +262,10 @@ app.post('/changePassword', (req, res) => {
 // ------------------------------
 
 app.post('/getThreadsBg', (req, res) => {
+  if (!req.body){
+    res.sendStatus(400);
+    return;
+  }
   let ids = req.body.ids || [];
   let self_id = req.body.id;
   const parser = (result, ignoring) => {
@@ -247,6 +298,10 @@ app.post('/getThreadsBg', (req, res) => {
 })
 
 app.post('/updateThreadBg', (req, res) => {
+  if (!req.body){
+    res.sendStatus(400);
+    return;
+  }
   let auth_token = req.body.token;
   let br = req.body.br ?? 99999;
   let pos = req.body.pos || 99999;
@@ -294,6 +349,10 @@ app.post('/updateThreadBg', (req, res) => {
 })
 
 app.post('/addThreadBgIgnore', (req, res) => {
+  if (!req.body){
+    res.sendStatus(400);
+    return;
+  }
   let auth_token = req.body.token;
   let t_id = req.body.id;
   if (t_id == -1) {
@@ -316,6 +375,10 @@ app.post('/addThreadBgIgnore', (req, res) => {
 })
 
 app.post('/removeThreadBgIgnore', (req, res) => {
+  if (!req.body){
+    res.sendStatus(400);
+    return;
+  }
   let auth_token = req.body.token;
   let t_id = req.body.id;
   client.query('SELECT id, threads_bg_ignore FROM AnimeUsers WHERE token = $1 LIMIT 1', [auth_token]).then(result => {
@@ -336,6 +399,10 @@ app.post('/removeThreadBgIgnore', (req, res) => {
 // ------------------------------
 
 app.post('/styles', (req, res) => {
+  if (!req.body){
+    res.sendStatus(400);
+    return;
+  }
   client.query('SELECT old_style, quick_reply, simple_main, sticky_header FROM AnimeUsers WHERE token = $1', [req.body.token], function(error, result){
     if (error) res.sendStatus(404);
     if (result) res.send(result.rows[0])
@@ -343,12 +410,16 @@ app.post('/styles', (req, res) => {
 })
 
 app.post('/updateStyles', (req, res) => {
-  let b = req.body;
-  b.old_style = b.old_style === true ? true : false;
-  b.quick_reply = b.quick_reply === true ? true : false;
-  b.simple_main = b.simple_main === true ? true : false;
-  b.sticky_header = b.sticky_header === true ? true : false;
-  client.query('UPDATE AnimeUsers SET (old_style, quick_reply, simple_main, sticky_header) = ($1, $2, $3, $4) WHERE token = $5', [b.old_style, b.quick_reply, b.simple_main, b.sticky_header, b.token])
+  if (!req.body){
+    res.sendStatus(400);
+    return;
+  }
+  let {old_style, quick_reply, simple_main, sticky_header} = req.body;
+  old_style = old_style === true ? true : false;
+  quick_reply = quick_reply === true ? true : false;
+  simple_main = simple_main === true ? true : false;
+  sticky_header = sticky_header === true ? true : false;
+  client.query('UPDATE AnimeUsers SET (old_style, quick_reply, simple_main, sticky_header) = ($1, $2, $3, $4) WHERE token = $5', [old_style, quick_reply, simple_main, sticky_header, req.body.token])
   .catch(e => {
     res.sendStatus(400);
   })

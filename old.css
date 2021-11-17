@@ -82,25 +82,6 @@ body{
     background-color: var(--color-projectAnime2);
 }
 
-/* Скажем "НЕТ!" рекламе! */
-.adv{
-    display: none !important
-}
-
-#cfhide{
-    display: none;
-}
-
-.ggbetgift{
-    display: none !important;
-}
-
-/* Ацкий, так ТСов не обозначают */
-
-/* .fa-user-edit:before {
-    display: none;
-} */
-
 .footer{
     background: var(--color-panel-global)
 }

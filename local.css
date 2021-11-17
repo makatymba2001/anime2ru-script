@@ -382,3 +382,24 @@ iframe:after{
     background: #379036;
     border: none;
 }
+
+.fa-user-edit{
+    display: none;
+}
+
+time{
+    z-index: 1;
+}
+
+/* Скажем "НЕТ!" рекламе! */
+.adv, ins.adsbygoogle{
+    display: none !important
+}
+
+#cfhide{
+    display: none !important;
+}
+
+.ggbetgift{
+    display: none !important;
+}

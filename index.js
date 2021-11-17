@@ -275,9 +275,8 @@ app.post('/getThreadsBg', (req, res) => {
       ignore_array = ignoring.rows[0].threads_bg_ignore || [];
     }
     result.rows.forEach(elem => {
-      let br = 1 - (elem.thread_bg_br / 100);
       result_obj[elem.id] = {
-        bg: elem.threads_bg ? `background-image: linear-gradient(to left, rgba(38, 39, 44, ${br}), rgba(38, 39, 44, ${br})), url(${elem.threads_bg}); background-position-y: ${elem.thread_bg_position};` : null,
+        bg: elem.threads_bg ? `background-image: linear-gradient(to left, rgba(38, 39, 44, ${elem.thread_bg_br / 100}), rgba(38, 39, 44, ${elem.thread_bg_br / 100})), url(${elem.threads_bg}); background-position-y: ${elem.thread_bg_position}%;` : null,
         ignored: ignore_array.includes(elem.id)
       }
     })
@@ -302,19 +301,14 @@ app.post('/updateThreadBg', (req, res) => {
     res.sendStatus(400);
     return;
   }
+  console.log(req.body)
   let auth_token = req.body.token;
   let br = req.body.br ?? 99999;
-  let pos = req.body.pos || 99999;
-  if (!Math.onRange(0, br, 100) || !Math.onRange(-3, Number(pos), 100)){
+  let pos = req.body.pos ?? 99999;
+  if (!Math.onRange(0, br, 100) || !Math.onRange(0, pos, 100)){
     res.sendStatus(400);
     return;
   }
-  let pos_enum = {
-    "-1": 'top',
-    "-2": "center",
-    "-3": "bottom"
-  }
-  pos = pos_enum[pos] || (pos + '%');
   client.query('SELECT * FROM AnimeUsers WHERE token = $1 LIMIT 1', [auth_token]).then(result => {
     if (!result.rowCount) {
       res.sendStatus(401);

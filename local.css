@@ -215,7 +215,6 @@ iframe:after{
 }
 #custon-settings-panel > div{
     min-height: 350px;
-    min-width: 700px;
     position: relative;
     padding: 20px;
     background-color: #1b1c20;
@@ -268,7 +267,7 @@ iframe:after{
 }
 
 #main-settings-container{
-    min-width: 500px;
+    width: 500px;
 }
 
 @media (max-width: 480px) {

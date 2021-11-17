@@ -166,7 +166,7 @@ app.get(/\/smile/, (req, res) => {
 // ------------------------------
 
 app.post('/authorize', (req, res) => {
-  if (!req.body){
+  if (!req.body || !req.body.mode){
     res.sendStatus(400);
     return;
   }
@@ -176,10 +176,9 @@ app.post('/authorize', (req, res) => {
     return;
   }
   let auth_token = b.token;
-  let token = crypto.randomBytes(32).toString('hex') + Date.now().toString();
   if (auth_token){
     // Пользователь имеет токен? Проверить его на валидность и вернуть юзера
-    client.query('SELECT id, threads_bg, thread_bg_br, thread_bg_position FROM AnimeUsers WHERE token = $1', [auth_token]).then(result => {
+    client.query(`SELECT id, threads_bg, thread_bg_br, thread_bg_position FROM ${getTable(req.body.mode)} WHERE token = $1`, [auth_token]).then(result => {
       result.rowCount ? res.send(result.rows[0]) : res.sendStatus(401);
     })
   }
@@ -188,56 +187,64 @@ app.post('/authorize', (req, res) => {
     let auth_password = null;
     if (b.password) auth_password = crypto.createHash('md5').update(b.password).digest('hex');
     let auth_id = Number(b.id);
-    client.query('SELECT id, token, threads_bg, thread_bg_br, thread_bg_position FROM AnimeUsers WHERE password = $1 and id = $2 LIMIT 1', [auth_password, auth_id]).then(result => {
-      if (!result.rowCount){
-        // Начать регистрацию
-        register_buffer[auth_id] = {password: auth_password, token: token};
-        res.send({need_confirm: true});
-      }
-      else{
-        // Авторизован по id и паролю
-        res.send(result.rows[0])
-      }
+    client.query(`SELECT id, token, threads_bg, thread_bg_br, thread_bg_position FROM ${getTable(req.body.mode)} WHERE password = $1 and id = $2 LIMIT 1`, [auth_password, auth_id]).then(result => {
+      result.rowCount ? res.send(result.rows[0]) : res.sendStatus(404);
     })
   }
 })
 
-let register_buffer = {};
-app.post('/confirmRegister', (req, res) => {
-  if (!req.body){
+app.post('/registerUser', (req, res) => {
+  if (!req.body || req.body.password.length < 2 || !req.body.mode){
     res.sendStatus(400);
     return;
   }
-  let auth_id = req.body.id;
+  let auth_id = Number(req.body.id);
+  let auth_password = crypto.createHash('md5').update(req.body.password).digest('hex');
+  let token = crypto.randomBytes(32).toString('hex') + Date.now().toString();
   let headers = new fetch.Headers();
   headers.append('Content-Type', 'application/json');
   headers.append("X-Requested-With", "XMLHttpRequest");
-  fetch("https://dota2.ru/forum/api/forum/showPostRates", {method: "POST", headers: headers, body: JSON.stringify({pid: 26000919, smile_id: "1538"})})
-  .catch(e => {
-    res.sendStatus(500)
-  })
-  .then(r => { if (r) return r.text()})
-  .then(data => {
-    if (data.includes('/' + auth_id + '.')){
-      // Регистрация пройдена
-      client.query('INSERT INTO AnimeUsers (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore) VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT) RETURNING token', [auth_id, register_buffer[auth_id].password, register_buffer[auth_id].token])
-      .catch(e => {
-        res.sendStatus(403);
-      })
-      .then(result => {
-        if (!result) return;
-        res.send(result.rows[0])
-      })
-    }
-    else{
-      // Регистрация не пройдена
-      res.sendStatus(404);
-    }
-  })
+  let verif_object;
+  if (req.body.mode === "dota2.ru") {
+    verif_object = {pid: 26000919, smile_id: "1538"};
+    fetch("https://dota2.ru/forum/api/forum/showPostRates", {method: "POST", headers: headers, body: JSON.stringify(verif_object)})
+    .catch(e => {
+      res.sendStatus(500)
+    })
+    .then(r => { if (r) return r.text()})
+    .then(data => {
+      if (data.includes('/' + auth_id + '.')){
+        // Регистрация пройдена
+        client.query(`INSERT INTO ${getTable(req.body.mode)} (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore) VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT) RETURNING token`, [auth_id, auth_password, token])
+        .catch(e => {
+          res.sendStatus(403);
+        })
+        .then(result => {
+          if (!result) return;
+          res.send(result.rows[0])
+        })
+      }
+      else{
+        // Регистрация не пройдена
+        res.sendStatus(404);
+      }
+    })
+  }
+  else if (req.body.mode === "esportsgames.ru"){
+    // Регистрация пройдена
+    client.query(`INSERT INTO ${getTable(req.body.mode)} (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore) VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT) RETURNING token`, [auth_id, auth_password, token])
+    .catch(e => {
+      res.sendStatus(403);
+    })
+    .then(result => {
+      if (!result) return;
+      res.send(result.rows[0])
+    })
+  }
 })
 
 app.post('/changePassword', (req, res) => {
-  if (!req.body){
+  if (!req.body || !req.body.mode){
     res.sendStatus(400);
     return;
   }
@@ -248,12 +255,12 @@ app.post('/changePassword', (req, res) => {
   }
   let old_p = crypto.createHash('md5').update(b.old_password).digest('hex');
   let new_p = crypto.createHash('md5').update(b.new_password).digest('hex');
-  client.query('SELECT * FROM AnimeUsers WHERE token = $1 and password = $2 LIMIT 1', [b.token, old_p]).then(result => {
+  client.query('SELECT * FROM ${getTable(req.body.mode)} WHERE token = $1 and password = $2 LIMIT 1', [b.token, old_p]).then(result => {
     if (!result.rowCount){
       res.sendStatus(404);
       return;
     }
-    client.query('UPDATE AnimeUsers set password = $1 WHERE token = $2 and password = $3', [new_p, b.token, old_p]).then(result => {
+    client.query('UPDATE ${getTable(req.body.mode)} set password = $1 WHERE token = $2 and password = $3', [new_p, b.token, old_p]).then(result => {
       res.sendStatus(200);
     })
   });
@@ -262,7 +269,7 @@ app.post('/changePassword', (req, res) => {
 // ------------------------------
 
 app.post('/getThreadsBg', (req, res) => {
-  if (!req.body){
+  if (!req.body || !req.body.mode){
     res.sendStatus(400);
     return;
   }
@@ -283,12 +290,12 @@ app.post('/getThreadsBg', (req, res) => {
     res.send(result_obj)
   }
   if (!self_id){
-    client.query('SELECT id, threads_bg, thread_bg_br, thread_bg_position FROM AnimeUsers WHERE array[id] && $1', [ids]).then(parser)
+    client.query('SELECT id, threads_bg, thread_bg_br, thread_bg_position FROM ${getTable(req.body.mode)} WHERE array[id] && $1', [ids]).then(parser)
   }
   else{
     Promise.all([
-      client.query(`SELECT id, threads_bg, thread_bg_br, thread_bg_position FROM AnimeUsers WHERE (array[id] && $1)`, [ids]),
-      client.query(`SELECT threads_bg_ignore FROM AnimeUsers WHERE id = $1`, [self_id])
+      client.query(`SELECT id, threads_bg, thread_bg_br, thread_bg_position FROM ${getTable(req.body.mode)} WHERE (array[id] && $1)`, [ids]),
+      client.query(`SELECT threads_bg_ignore FROM ${getTable(req.body.mode)} WHERE id = $1`, [self_id])
     ])
     .then(([result, ignoring]) => {
       parser(result, ignoring)
@@ -297,7 +304,7 @@ app.post('/getThreadsBg', (req, res) => {
 })
 
 app.post('/updateThreadBg', (req, res) => {
-  if (!req.body){
+  if (!req.body || !req.body.mode){
     res.sendStatus(400);
     return;
   }
@@ -308,13 +315,13 @@ app.post('/updateThreadBg', (req, res) => {
     res.sendStatus(400);
     return;
   }
-  client.query('SELECT * FROM AnimeUsers WHERE token = $1 LIMIT 1', [auth_token]).then(result => {
+  client.query(`SELECT * FROM ${getTable(req.body.mode)} WHERE token = $1 LIMIT 1`, [auth_token]).then(result => {
     if (!result.rowCount) {
       res.sendStatus(401);
       return;
     }
     if (req.body.data === null){
-      client.query('UPDATE AnimeUsers SET (threads_bg, thread_bg_br, thread_bg_position) = ($1, DEFAULT, DEFAULT) WHERE token = $4', [null, auth_token]).then(result => {
+      client.query(`UPDATE ${getTable(req.body.mode)} SET (threads_bg, thread_bg_br, thread_bg_position) = ($1, DEFAULT, DEFAULT) WHERE token = $4`, [null, auth_token]).then(result => {
         res.sendStatus(200);
       })
     }
@@ -325,13 +332,13 @@ app.post('/updateThreadBg', (req, res) => {
       })
       .then(data => {
         if (!data) return;
-        client.query('UPDATE AnimeUsers SET (threads_bg, thread_bg_br, thread_bg_position) = ($1, $2, $3) WHERE token = $4', [data.link, br, pos, auth_token]).then(result => {
+        client.query(`UPDATE ${getTable(req.body.mode)} SET (threads_bg, thread_bg_br, thread_bg_position) = ($1, $2, $3) WHERE token = $4`, [data.link, br, pos, auth_token]).then(result => {
           res.sendStatus(200);
         })
       })
     }
     else if (req.body.link){
-      client.query('UPDATE AnimeUsers SET (threads_bg, thread_bg_br, thread_bg_position) = ($1, $2, $3) WHERE token = $4', [req.body.link, br, pos, auth_token]).then(result => {
+      client.query(`UPDATE ${getTable(req.body.mode)} SET (threads_bg, thread_bg_br, thread_bg_position) = ($1, $2, $3) WHERE token = $4`, [req.body.link, br, pos, auth_token]).then(result => {
         res.sendStatus(200);
       })
     }
@@ -342,7 +349,7 @@ app.post('/updateThreadBg', (req, res) => {
 })
 
 app.post('/addThreadBgIgnore', (req, res) => {
-  if (!req.body){
+  if (!req.body || !req.body.mode){
     res.sendStatus(400);
     return;
   }
@@ -352,7 +359,7 @@ app.post('/addThreadBgIgnore', (req, res) => {
     res.sendStatus(400);
     return;
   }
-  client.query('SELECT threads_bg_ignore FROM AnimeUsers WHERE token = $1 LIMIT 1', [auth_token]).then(result => {
+  client.query(`SELECT threads_bg_ignore FROM ${getTable(req.body.mode)} WHERE token = $1 LIMIT 1`, [auth_token]).then(result => {
     if (!result.rowCount){
       res.sendStatus(401);
       return;
@@ -361,20 +368,20 @@ app.post('/addThreadBgIgnore', (req, res) => {
       res.sendStatus(400);
       return;
     }
-    client.query('UPDATE AnimeUsers SET threads_bg_ignore = array_append(threads_bg_ignore, $1) WHERE token = $2', [t_id, auth_token]).then(result => {
+    client.query(`UPDATE ${getTable(req.body.mode)} SET threads_bg_ignore = array_append(threads_bg_ignore, $1) WHERE token = $2`, [t_id, auth_token]).then(result => {
       res.sendStatus(200);
     })
   })
 })
 
 app.post('/removeThreadBgIgnore', (req, res) => {
-  if (!req.body){
+  if (!req.body || !req.body.mode){
     res.sendStatus(400);
     return;
   }
   let auth_token = req.body.token;
   let t_id = req.body.id;
-  client.query('SELECT id, threads_bg_ignore FROM AnimeUsers WHERE token = $1 LIMIT 1', [auth_token]).then(result => {
+  client.query(`SELECT id, threads_bg_ignore FROM ${getTable(req.body.mode)} WHERE token = $1 LIMIT 1`, [auth_token]).then(result => {
     if (!result.rowCount){
       res.sendStatus(401);
       return;
@@ -383,7 +390,7 @@ app.post('/removeThreadBgIgnore', (req, res) => {
       res.sendStatus(400);
       return;
     }
-    client.query('UPDATE AnimeUsers SET threads_bg_ignore = array_remove(threads_bg_ignore, $1) WHERE token = $2', [t_id, auth_token]).then(result => {
+    client.query(`UPDATE ${getTable(req.body.mode)} SET threads_bg_ignore = array_remove(threads_bg_ignore, $1) WHERE token = $2`, [t_id, auth_token]).then(result => {
       res.sendStatus(200);
     })
   })
@@ -392,18 +399,18 @@ app.post('/removeThreadBgIgnore', (req, res) => {
 // ------------------------------
 
 app.post('/styles', (req, res) => {
-  if (!req.body){
+  if (!req.body || !req.body.mode){
     res.sendStatus(400);
     return;
   }
-  client.query('SELECT old_style, quick_reply, simple_main, sticky_header FROM AnimeUsers WHERE token = $1', [req.body.token], function(error, result){
+  client.query(`SELECT old_style, quick_reply, simple_main, sticky_header FROM ${getTable(req.body.mode)} WHERE token = $1`, [req.body.token], function(error, result){
     if (error) res.sendStatus(404);
     if (result) res.send(result.rows[0])
   })
 })
 
 app.post('/updateStyles', (req, res) => {
-  if (!req.body){
+  if (!req.body || !req.body.mode){
     res.sendStatus(400);
     return;
   }
@@ -412,7 +419,7 @@ app.post('/updateStyles', (req, res) => {
   quick_reply = quick_reply === true ? true : false;
   simple_main = simple_main === true ? true : false;
   sticky_header = sticky_header === true ? true : false;
-  client.query('UPDATE AnimeUsers SET (old_style, quick_reply, simple_main, sticky_header) = ($1, $2, $3, $4) WHERE token = $5', [old_style, quick_reply, simple_main, sticky_header, req.body.token])
+  client.query(`UPDATE ${getTable(req.body.mode)} SET (old_style, quick_reply, simple_main, sticky_header) = ($1, $2, $3, $4) WHERE token = $5`, [old_style, quick_reply, simple_main, sticky_header, req.body.token])
   .catch(e => {
     res.sendStatus(400);
   })
@@ -433,4 +440,13 @@ setInterval(updateServerSmileData, 300000);
 
 Math.onRange = (min, value, max) => {
   return value >= min && value <= max;
+}
+
+function getTable(mode){
+  switch (mode){
+    case "dota2.ru":
+      return "AnimeUsers"
+    case "esportsgames.ru":
+      return "EsportUsers";
+  }
 }

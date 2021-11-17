@@ -255,12 +255,12 @@ app.post('/changePassword', (req, res) => {
   }
   let old_p = crypto.createHash('md5').update(b.old_password).digest('hex');
   let new_p = crypto.createHash('md5').update(b.new_password).digest('hex');
-  client.query('SELECT * FROM ${getTable(req.body.mode)} WHERE token = $1 and password = $2 LIMIT 1', [b.token, old_p]).then(result => {
+  client.query(`SELECT * FROM ${getTable(req.body.mode)} WHERE token = $1 and password = $2 LIMIT 1`, [b.token, old_p]).then(result => {
     if (!result.rowCount){
       res.sendStatus(404);
       return;
     }
-    client.query('UPDATE ${getTable(req.body.mode)} set password = $1 WHERE token = $2 and password = $3', [new_p, b.token, old_p]).then(result => {
+    client.query(`UPDATE ${getTable(req.body.mode)} set password = $1 WHERE token = $2 and password = $3`, [new_p, b.token, old_p]).then(result => {
       res.sendStatus(200);
     })
   });
@@ -290,7 +290,7 @@ app.post('/getThreadsBg', (req, res) => {
     res.send(result_obj)
   }
   if (!self_id){
-    client.query('SELECT id, threads_bg, thread_bg_br, thread_bg_position FROM ${getTable(req.body.mode)} WHERE array[id] && $1', [ids]).then(parser)
+    client.query(`SELECT id, threads_bg, thread_bg_br, thread_bg_position FROM ${getTable(req.body.mode)} WHERE array[id] && $1`, [ids]).then(parser)
   }
   else{
     Promise.all([

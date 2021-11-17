@@ -301,7 +301,6 @@ app.post('/updateThreadBg', (req, res) => {
     res.sendStatus(400);
     return;
   }
-  console.log(req.body)
   let auth_token = req.body.token;
   let br = req.body.br ?? 99999;
   let pos = req.body.pos ?? 99999;

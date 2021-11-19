@@ -415,6 +415,11 @@ time{
     display: none !important;
 }
 
+div[class^="banner"]{
+    display: none;
+}
+
+
 .smiles-panel__tabs-content{
     display: none !important;
 }

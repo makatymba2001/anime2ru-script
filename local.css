@@ -478,7 +478,7 @@ div[class^="banner"]{
 }
 
 .context_container > div{
-    min-width: 120px;
+    min-width: 140px;
     padding: 2px 3px;
     box-sizing: content-box;
     position: relative;

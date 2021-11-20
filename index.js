@@ -506,7 +506,7 @@ app.post('/deleteSmileSection', (req, res) => {
     }
     sections.splice(index, 1)
     smiles = smiles.filter(smile => {return smile.section_id != b.id})
-    client.query(`UPDATE ${getTable(b.mode)} SET custom_smile_sections = $1 WHERE token = $2`, [sections, b.token])
+    client.query(`UPDATE ${getTable(b.mode)} SET (custom_smile_sections, custom_smiles) = ($1, $2) WHERE token = $3`, [sections, smiles, b.token])
     .catch(e => {
       res.sendStatus(400);
     })

@@ -487,7 +487,7 @@ app.post('/deleteSmileSection', (req, res) => {
     return;
   }
   let b = req.body;
-  client.query(`SELECT id, custom_smile_sections FROM ${getTable(b.mode)} WHERE token = $1 LIMIT 1`, [b.token])
+  client.query(`SELECT custom_smiles, custom_smile_sections FROM ${getTable(b.mode)} WHERE token = $1 LIMIT 1`, [b.token])
   .catch(e => {
     res.sendStatus(400);
   })
@@ -498,12 +498,14 @@ app.post('/deleteSmileSection', (req, res) => {
       return;
     }
     let sections = result.rows[0].custom_smile_sections || [];
+    let smiles = result.rows[0].custom_smiles || [];
     let index = sections.findIndex(section => {return section.id == b.id});
     if (index == -1){
       res.sendStatus(404);
       return;
     }
     sections.splice(index, 1)
+    smiles = smiles.filter(smile => {return smile.section_id != b.id})
     client.query(`UPDATE ${getTable(b.mode)} SET custom_smile_sections = $1 WHERE token = $2`, [sections, b.token])
     .catch(e => {
       res.sendStatus(400);

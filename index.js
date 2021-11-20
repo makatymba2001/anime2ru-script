@@ -473,7 +473,7 @@ app.post('/createSmileSection', (req, res) => {
       image: b.image
     }
     if (b.order){
-      sections.splice(order, 0, section_data)
+      sections.splice(b.order, 0, section_data)
     }
     else{
       sections.push(section_data)

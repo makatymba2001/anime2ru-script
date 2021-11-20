@@ -178,7 +178,7 @@ app.post('/authorize', (req, res) => {
   let auth_token = b.token;
   if (auth_token){
     // Пользователь имеет токен? Проверить его на валидность и вернуть юзера
-    client.query(`SELECT id, threads_bg, thread_bg_br, thread_bg_position FROM ${getTable(req.body.mode)} WHERE token = $1`, [auth_token]).then(result => {
+    client.query(`SELECT id, threads_bg, thread_bg_br, thread_bg_position, custom_smile_sections FROM ${getTable(req.body.mode)} WHERE token = $1`, [auth_token]).then(result => {
       result.rowCount ? res.send(result.rows[0]) : res.sendStatus(401);
     })
   }
@@ -187,7 +187,7 @@ app.post('/authorize', (req, res) => {
     let auth_password = null;
     if (b.password) auth_password = crypto.createHash('md5').update(b.password).digest('hex');
     let auth_id = Number(b.id);
-    client.query(`SELECT id, token, threads_bg, thread_bg_br, thread_bg_position FROM ${getTable(req.body.mode)} WHERE password = $1 and id = $2 LIMIT 1`, [auth_password, auth_id]).then(result => {
+    client.query(`SELECT id, token, threads_bg, thread_bg_br, thread_bg_position, custom_smile_sections FROM ${getTable(req.body.mode)} WHERE password = $1 and id = $2 LIMIT 1`, [auth_password, auth_id]).then(result => {
       result.rowCount ? res.send(result.rows[0]) : res.sendStatus(404);
     })
   }
@@ -430,6 +430,198 @@ app.post('/updateStyles', (req, res) => {
     else{
       res.sendStatus(200);
     }
+  })
+})
+
+// ------------------------------
+
+app.post('/createSmileSection', (req, res) => {
+  if (!req.body || !req.body.mode){
+    res.sendStatus(400);
+    return;
+  }
+  let b = req.body;
+  if (!b.name || !b.image){
+    res.sendStatus(400);
+    return;
+  }
+  client.query(`SELECT id, custom_smile_sections FROM ${getTable(b.mode)} WHERE token = $1 LIMIT 1`, [b.token])
+  .catch(e => {
+    res.sendStatus(400);
+  })
+  .then(result => {
+    if (!result) return;
+    if (!result.rowCount){
+      res.sendStatus(403);
+      return;
+    }
+    let sections = result.rows[0].custom_smile_sections || [];
+    if (sections.length > 9){
+      res.sendStatus(400);
+      return;
+    }
+    let section_data = {
+      id: Date.now() * 10000000 + result.rows[0].id,
+      name: b.name.substring(0, 64),
+      image: b.image
+    }
+    if (b.order){
+      sections.splice(order, 0, section_data)
+    }
+    else{
+      sections.push(section_data)
+    }
+    client.query(`UPDATE ${getTable(b.mode)} SET custom_smile_sections = $1 WHERE token = $2`, [sections, b.token])
+    .catch(e => {
+      res.sendStatus(400);
+    })
+    .then(() => {
+      res.sendStatus(200);
+    })
+  })
+})
+
+app.post('/deleteSmileSection', (req, res) => {
+  if (!req.body || !req.body.mode){
+    res.sendStatus(400);
+    return;
+  }
+  let b = req.body;
+  client.query(`SELECT id, custom_smile_sections FROM ${getTable(b.mode)} WHERE token = $1 LIMIT 1`, [b.token])
+  .catch(e => {
+    res.sendStatus(400);
+  })
+  .then(result => {
+    if (!result) return;
+    if (!result.rowCount){
+      res.sendStatus(403);
+      return;
+    }
+    let sections = result.rows[0].custom_smile_sections || [];
+    let index = sections.findIndex(section => {return section.id == b.id});
+    if (index == -1){
+      res.sendStatus(404);
+      return;
+    }
+    sections.splice(index, 1)
+    client.query(`UPDATE ${getTable(b.mode)} SET custom_smile_sections = $1 WHERE token = $2`, [sections, b.token])
+    .catch(e => {
+      res.sendStatus(400);
+    })
+    .then(() => {
+      res.sendStatus(200);
+    })
+  })
+})
+
+app.post('/addSmileToSection', (req, res) => {
+  if (!req.body || !req.body.mode){
+    res.sendStatus(400);
+    return;
+  }
+  let b = req.body;
+  if (!b.section_id || !b.link || !b.title){
+    res.sendStatus(400);
+  }
+  client.query(`SELECT custom_smile_sections, custom_smiles FROM ${getTable(b.mode)} WHERE token = $1`, [b.token])
+  .catch(e => {
+    res.sendStatus(400)
+  })
+  .then(result => {
+    if (!result) return;
+    if (!result.rowCount){
+      res.sendStatus(403);
+      return;
+    }
+    let smiles = result.rows[0].custom_smiles || [];
+    let smile_sections = result.rows[0].custom_smile_sections;
+    if (!smile_sections || !smile_sections.find(section => {return section.id == b.section_id}) || smiles.length > 999){
+      res.sendStatus(400);
+      return;
+    }
+    smiles.push({
+      section_id: b.section_id,
+      link: b.link,
+      title: b.title
+    })
+    client.query(`UPDATE ${getTable(b.mode)} SET custom_smiles = $1 WHERE token = $2`, [smiles, b.token])
+    .catch(e => {
+      res.sendStatus(400);
+    })
+    .then(() => {
+      res.sendStatus(200);
+    })
+  })
+})
+
+app.post('/deleteSmileFromSection', (req, res) => {
+  if (!req.body || !req.body.mode){
+    res.sendStatus(400);
+    return;
+  }
+  let b = req.body;
+  if (!b.section_id || b.index < 0){
+    res.sendStatus(400);
+    return;
+  }
+  client.query(`SELECT custom_smile_sections, custom_smiles FROM ${getTable(b.mode)} WHERE token = $1`, [b.token])
+  .catch(e => {
+    res.sendStatus(400)
+  })
+  .then(result => {
+    if (!result) return;
+    if (!result.rowCount){
+      res.sendStatus(403);
+      return;
+    }
+    let smiles = result.rows[0].custom_smiles || [];
+    let smile_sections = result.rows[0].custom_smile_sections || [];
+    if (!smiles.length || !smile_sections.length || !smile_sections.find(section => {return section.id == b.section_id})){
+      res.sendStatus(400);
+      return;
+    }
+    let current_section_smiles = smiles.filter(smile => {return smile.section_id == b.section_id});
+    if (!current_section_smiles[b.index]){
+      res.sendStatus(404);
+      return;
+    }
+    let else_section_smiles = smiles.filter(smile => {return smile.section_id != b.section_id});
+    current_section_smiles.splice(b.index, 1).concat(else_section_smiles);
+    client.query(`UPDATE ${getTable(b.mode)} SET custom_smiles = $1 WHERE token = $2`, [current_section_smiles, b.token])
+    .catch(e => {
+      res.sendStatus(400);
+    })
+    .then(() => {
+      res.sendStatus(200);
+    })
+  })
+})
+
+app.post('/getSmilesInSection', (req, res) => {
+  if (!req.body || !req.body.mode){
+    res.sendStatus(400);
+    return;
+  }
+  let b = req.body;
+  if (!b.section_id){
+    res.sendStatus(400);
+  }
+  client.query('SELECT custom_smiles FROM AnimeUsers WHERE token = $1', [b.token])
+  .catch(e => {
+    res.sendStatus(400);
+  })
+  .then(result => {
+    if (!result) return;
+    if (!result.rowCount){
+      res.sendStatus(403);
+      return;
+    }
+    let smiles = result.rows[0].custom_smiles || [];
+    res.send({
+      smiles: smiles.filter(smile => {
+        return smile.section_id == b.section_id;
+      })
+    })
   })
 })
 

@@ -217,6 +217,7 @@ app.post('/registerUser', (req, res) => {
       return;
     })
     .then(data => {
+      console.log(data)
       if (!data) return;
       if (data.find(users => {
         return users.link.endsWith('.' + auth_id)

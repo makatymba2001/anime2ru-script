@@ -608,7 +608,7 @@ app.post('/getSmilesInSection', (req, res) => {
   if (!b.section_id){
     res.sendStatus(400);
   }
-  client.query('SELECT custom_smiles FROM AnimeUsers WHERE token = $1', [b.token])
+  client.query(`SELECT custom_smiles FROM ${getTable(b.mode)} WHERE token = $1`, [b.token])
   .catch(e => {
     res.sendStatus(400);
   })

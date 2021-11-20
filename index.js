@@ -211,9 +211,16 @@ app.post('/registerUser', (req, res) => {
     .catch(e => {
       res.sendStatus(500)
     })
-    .then(r => { if (r) return r.text()})
+    .then(r => { if (r) return r.json()})
+    .catch(e => {
+      res.sendStatus(500);
+      return;
+    })
     .then(data => {
-      if (data.includes('/' + auth_id + '.')){
+      if (!data) return;
+      if (data.find(users => {
+        return users.link.endsWith('.' + auth_id)
+      })){
         // Регистрация пройдена
         client.query(`INSERT INTO ${getTable(req.body.mode)} (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore) VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT) RETURNING token`, [auth_id, auth_password, token])
         .catch(e => {

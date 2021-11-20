@@ -636,6 +636,41 @@ app.post('/getSmilesInSection', (req, res) => {
   })
 })
 
+app.post('/createAnime2ruSmile', (req, res) => {
+  if (!req.body || !req.body.mode){
+    res.sendStatus(400);
+    return;
+  }
+  let b = req.body;
+  if (!b.title || !b.link || !b.token){
+    res.sendStatus(400);
+    return;
+  }
+  client.query(`SELECT id FROM ${getTable(b.mode)} WHERE token = $1`, [b.token]).then(result => {
+    if (!result) return;
+    if (!result.rowCount){
+      res.sendStatus(403);
+    }
+    client.query('UPDATE AnimeSmiles SET data = array_append(data, $1::jsonb)', [{title: b.title, link: b.link}])
+    .catch(e => {
+      res.sendStatus(400);
+    })
+    .then(() => {
+      res.sendStatus(200);
+    })
+  })
+})
+
+app.get('/getAnime2ruSmiles', (req, res) => {
+  client.query('SELECT data from AnimeSmiles')
+  .catch(e => {
+    res.sendStatus(400);
+  })
+  .then(result => {
+    res.send({smiles: result.rows[0].data});
+  })
+})
+
 // ------------------------------
 
 updateServerSmileData();

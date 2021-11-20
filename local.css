@@ -445,8 +445,23 @@ div[class^="banner"]{
 }
 
 .bttv-search input{
+    background-color: #222224;
     padding: 5px;
     width: 100%;
+}
+
+.bttv-search div.input{
+    cursor: pointer;
+    display: inline-block;
+    text-align: center;
+    background-color: #222224;
+    padding: 5px;
+    width: 100%;
+    line-height: 100%;
+}
+
+.bttv-search div.input:hover{
+    background-color: rgb(53, 53, 56);
 }
 
 .bttv-search:after{

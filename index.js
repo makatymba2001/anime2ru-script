@@ -687,4 +687,4 @@ function getTable(mode){
     case "esportsgames.ru":
       return "EsportUsers";
   }
-}
+};

@@ -197,16 +197,25 @@ iframe:after{
 }
 
 #custon-settings-panel{
+    box-sizing: border-box;
     position: fixed;
     top: 0px;
     left: 0px;
     height: 100%;
     width: 100%;
     background-color: #121215cc;
-    display: none;
-    align-items: center;
-    justify-content: center;
     z-index: 999999999999999;
+    display: none;
+}
+
+#custom-id, #script-version{
+    font-size: 12px;
+    color: rgb(142, 142, 142)
+}
+
+#script-version:after{
+    content: "|";
+    margin: 0 5px;
 }
 
 #custon-settings-panel .close{
@@ -214,8 +223,8 @@ iframe:after{
     filter: brightness(60%);
     cursor: pointer;
     position: absolute;
-    right: 20px;
-    top: 20px;
+    right: 15px;
+    top: 7px;
 }
 
 #custon-settings-panel .close:hover{
@@ -223,18 +232,31 @@ iframe:after{
 }
 
 #custon-settings-panel.visible{
-    display: flex;
+    display: block;
 }
+
 #custon-settings-panel > div{
-    min-height: 350px;
+    margin: auto;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 800px;
+    /* box-sizing: border-box; */
+    min-height: 535px;
     position: relative;
     padding: 20px;
     background-color: #1b1c20;
 }
 
+.custom-settings-title{
+    align-items: baseline;
+    gap: 0px !important;
+    margin-top: 0px !important;
+}
+
 #custon-settings-panel h2{
     margin-block-start: 0em !important;
-    margin-block-start: 0.6em !important;
+    margin-block-end: 0em !important;
+    margin-right: 10px;
 }
 
 #custon-settings-panel > div > div{
@@ -244,16 +266,31 @@ iframe:after{
     gap: 20px;
 }
 
-@media (max-width: 480px) {
-    #custon-settings-panel > div{
+@media (max-width: 800px), (max-height: 545px){
+    #custon-settings-panel{
         overflow-y: scroll;
+    }
+    #main-settings-container{
+        width: 100% !important;
+    }
+    #custon-settings-panel > div{
+        top: 0px;
+        transform: translateY(0%);
         width: 100%;
-        min-width: 100%;
-        height: 100%;
+        min-height: 100%;
     }
     #custon-settings-panel > div > div{
         flex-direction: column;
-        max-width: 100%;
+    }
+    #custom-settings-paginator{
+        width: 100%;
+        min-width: 100%;
+    }
+    .custom-settings-title{
+        flex-direction: column;
+    }
+    #script-version:after{
+        content: ''
     }
 }
 
@@ -279,20 +316,18 @@ iframe:after{
 }
 
 #main-settings-container{
-    width: 500px;
-}
-
-@media (max-width: 480px) {
-    #main-settings-container{
-        width: 100%;
-        min-width: 100%;
-    }
+    box-sizing: border-box;
+    width: 565px;
 }
 
 #main-settings-container div{
     display: none;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
+}
+
+.small-bottom{
+    margin-bottom: -8px !important;
 }
 
 #main-settings-container div.visible{
@@ -318,6 +353,9 @@ iframe:after{
     align-items: center;
 }
 
+#main-settings-container > div input[type="range"]{
+    padding: 2px !important;
+}
 
 #main-settings-container > div input[type="submit"]{
     cursor: pointer;
@@ -325,7 +363,12 @@ iframe:after{
     padding: 8px 16px;
 }
 
+#main-settings-container > div input[type="submit"]:hover{
+    background-color: #070707 !important;
+}
+
 #custom-settings-status{
+    height: 20px;
     color: rgb(200, 0, 0);
 }
 
@@ -359,7 +402,7 @@ iframe:after{
 }
 
 #thread-bg-preview{
-    padding: 20px;
+    padding: 15px;
     display: block !important;
     width: 100%;
     background-size: cover;
@@ -494,12 +537,12 @@ div[class^="banner"]{
 
 .context_container > div{
     min-width: 140px;
-    padding: 2px 3px;
+    padding: 3px 3px;
     box-sizing: content-box;
     position: relative;
     display: flex;
     align-items: center;
-    font-size: 13px;
+    font-size: 14px;
     cursor: pointer;
 }
 
@@ -519,4 +562,9 @@ div[class^="banner"]{
     display: none;
     position: absolute;
     bottom: -3px;
+}
+
+.forum-theme__item-status{
+    overflow-wrap: break-word !important;
+    word-break: normal;
 }

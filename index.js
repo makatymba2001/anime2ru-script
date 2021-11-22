@@ -178,7 +178,7 @@ app.post('/authorize', (req, res) => {
   let auth_token = b.token;
   if (auth_token){
     // Пользователь имеет токен? Проверить его на валидность и вернуть юзера
-    client.query(`SELECT id, threads_bg, thread_bg_br, thread_bg_position, custom_smile_sections FROM ${getTable(req.body.mode)} WHERE token = $1`, [auth_token]).then(result => {
+    client.query(`SELECT id, threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self, custom_smile_sections FROM ${getTable(req.body.mode)} WHERE token = $1`, [auth_token]).then(result => {
       result.rowCount ? res.send(result.rows[0]) : res.sendStatus(401);
     })
   }
@@ -187,7 +187,7 @@ app.post('/authorize', (req, res) => {
     let auth_password = null;
     if (b.password) auth_password = crypto.createHash('md5').update(b.password).digest('hex');
     let auth_id = Number(b.id);
-    client.query(`SELECT id, token, threads_bg, thread_bg_br, thread_bg_position, custom_smile_sections FROM ${getTable(req.body.mode)} WHERE password = $1 and id = $2 LIMIT 1`, [auth_password, auth_id]).then(result => {
+    client.query(`SELECT id, token, threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self, custom_smile_sections FROM ${getTable(req.body.mode)} WHERE password = $1 and id = $2 LIMIT 1`, [auth_password, auth_id]).then(result => {
       result.rowCount ? res.send(result.rows[0]) : res.sendStatus(404);
     })
   }
@@ -222,7 +222,7 @@ app.post('/registerUser', (req, res) => {
         return users.link.endsWith('.' + auth_id)
       })){
         // Регистрация пройдена
-        client.query(`INSERT INTO ${getTable(req.body.mode)} (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore) VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT) RETURNING token`, [auth_id, auth_password, token])
+        client.query(`INSERT INTO ${getTable(req.body.mode)} (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore, thread_bg_hide, thread_bg_self) VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT) RETURNING token`, [auth_id, auth_password, token])
         .catch(e => {
           res.sendStatus(403);
         })
@@ -239,7 +239,7 @@ app.post('/registerUser', (req, res) => {
   }
   else if (req.body.mode === "esportsgames.ru"){
     // Регистрация пройдена
-    client.query(`INSERT INTO ${getTable(req.body.mode)} (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore) VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT) RETURNING token`, [auth_id, auth_password, token])
+    client.query(`INSERT INTO ${getTable(req.body.mode)} (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore, thread_bg_hide, thread_bg_self) VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT) RETURNING token`, [auth_id, auth_password, token])
     .catch(e => {
       res.sendStatus(403);
     })
@@ -282,30 +282,31 @@ app.post('/getThreadsBg', (req, res) => {
   }
   let ids = req.body.ids || [];
   let self_id = req.body.id;
-  const parser = (result, ignoring) => {
-    let result_obj = {};
-    let ignore_array = [];
-    if (ignoring?.rows && ignoring?.rows[0]){
-      ignore_array = ignoring.rows[0].threads_bg_ignore || [];
-    }
+  const filter = (result, user) => {
+    let result_obj = {}, ignore_array = [];
+    let user_data = user?.rows ? user?.rows[0] : {};
+    ignore_array = user_data.threads_bg_ignore || [];
     result.rows.forEach(elem => {
+      let bg = elem.threads_bg ? `background-image: linear-gradient(to left, rgba(38, 39, 44, ${elem.thread_bg_br / 100}), rgba(38, 39, 44, ${elem.thread_bg_br / 100})), url(${elem.threads_bg}); background-position-y: ${elem.thread_bg_position}%;` : null;
+      if (elem.thread_bg_self && elem.id != user_data.id) bg = null;
+      if (user_data.thread_bg_hide && elem.id != user_data.id) bg = null;
       result_obj[elem.id] = {
-        bg: elem.threads_bg ? `background-image: linear-gradient(to left, rgba(38, 39, 44, ${elem.thread_bg_br / 100}), rgba(38, 39, 44, ${elem.thread_bg_br / 100})), url(${elem.threads_bg}); background-position-y: ${elem.thread_bg_position}%;` : null,
+        bg: bg,
         ignored: ignore_array.includes(elem.id)
       }
     })
     res.send(result_obj)
   }
   if (!self_id){
-    client.query(`SELECT id, threads_bg, thread_bg_br, thread_bg_position FROM ${getTable(req.body.mode)} WHERE array[id] && $1`, [ids]).then(parser)
+    client.query(`SELECT id, threads_bg, thread_bg_br, thread_bg_position, thread_bg_self FROM ${getTable(req.body.mode)} WHERE array[id] && $1`, [ids]).then(filter)
   }
   else{
     Promise.all([
-      client.query(`SELECT id, threads_bg, thread_bg_br, thread_bg_position FROM ${getTable(req.body.mode)} WHERE (array[id] && $1)`, [ids]),
-      client.query(`SELECT threads_bg_ignore FROM ${getTable(req.body.mode)} WHERE id = $1`, [self_id])
+      client.query(`SELECT id, threads_bg, thread_bg_br, thread_bg_position, thread_bg_self FROM ${getTable(req.body.mode)} WHERE (array[id] && $1)`, [ids]),
+      client.query(`SELECT id, threads_bg_ignore, thread_bg_hide FROM ${getTable(req.body.mode)} WHERE id = $1`, [self_id])
     ])
-    .then(([result, ignoring]) => {
-      parser(result, ignoring)
+    .then(([result, user]) => {
+      filter(result, user)
     })
   }
 })
@@ -328,7 +329,7 @@ app.post('/updateThreadBg', (req, res) => {
       return;
     }
     if (req.body.data === null){
-      client.query(`UPDATE ${getTable(req.body.mode)} SET (threads_bg, thread_bg_br, thread_bg_position) = ($1, DEFAULT, DEFAULT) WHERE token = $4`, [null, auth_token]).then(result => {
+      client.query(`UPDATE ${getTable(req.body.mode)} SET (threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self) = ($1, DEFAULT, DEFAULT, $2, $3) WHERE token = $4`, [null, Boolean(req.body.hide), Boolean(req.body.self), auth_token]).then(result => {
         res.sendStatus(200);
       })
     }
@@ -339,13 +340,13 @@ app.post('/updateThreadBg', (req, res) => {
       })
       .then(data => {
         if (!data) return;
-        client.query(`UPDATE ${getTable(req.body.mode)} SET (threads_bg, thread_bg_br, thread_bg_position) = ($1, $2, $3) WHERE token = $4`, [data.link, br, pos, auth_token]).then(result => {
+        client.query(`UPDATE ${getTable(req.body.mode)} SET (threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self) = ($1, $2, $3, $4, $5) WHERE token = $6`, [data.link, br, pos, Boolean(req.body.hide), Boolean(req.body.self), auth_token]).then(result => {
           res.sendStatus(200);
         })
       })
     }
     else if (req.body.link){
-      client.query(`UPDATE ${getTable(req.body.mode)} SET (threads_bg, thread_bg_br, thread_bg_position) = ($1, $2, $3) WHERE token = $4`, [req.body.link, br, pos, auth_token]).then(result => {
+      client.query(`UPDATE ${getTable(req.body.mode)} SET (threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self) = ($1, $2, $3, $4, $5) WHERE token = $6`, [req.body.link, br, pos, Boolean(req.body.hide), Boolean(req.body.self), auth_token]).then(result => {
         res.sendStatus(200);
       })
     }

@@ -284,8 +284,8 @@ app.post('/getThreadsBg', (req, res) => {
   let self_id = req.body.id;
   const filter = (result, user) => {
     let result_obj = {}, ignore_array = [];
-    let user_data = user?.rows ? user?.rows[0] : {};
-    ignore_array = user_data.threads_bg_ignore || [];
+    let user_data = user?.rows[0] || {};
+    ignore_array = user_data?.threads_bg_ignore || [];
     result.rows.forEach(elem => {
       let bg = elem.threads_bg ? `background-image: linear-gradient(to left, rgba(38, 39, 44, ${elem.thread_bg_br / 100}), rgba(38, 39, 44, ${elem.thread_bg_br / 100})), url(${elem.threads_bg}); background-position-y: ${elem.thread_bg_position}%;` : null;
       if (elem.thread_bg_self && elem.id != user_data.id) bg = null;

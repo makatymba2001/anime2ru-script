@@ -563,8 +563,3 @@ div[class^="banner"]{
     position: absolute;
     bottom: -3px;
 }
-
-.forum-theme__item-status{
-    overflow-wrap: break-word !important;
-    word-break: normal;
-}

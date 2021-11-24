@@ -13,7 +13,7 @@ imgur.setClientId(process.env.IMGUR_CLIENT_ID);
 imgur.setAPIUrl('https://api.imgur.com/3/');
 
 const app = express();
-app.use(bodyParser.json({limit: '10mb'}));
+app.use(bodyParser.json({limit: '15mb'}));
 app.use(express.static(path.join(__dirname, 'static')));
 app.set('views', path.join(__dirname, 'static'));
 app.set('view engine', 'ejs');
@@ -334,7 +334,7 @@ app.post('/updateThreadBg', (req, res) => {
         res.sendStatus(200);
       })
     }
-    if (req.body.data){
+    else if (req.body.data){
       imgur.uploadBase64(req.body.data.substring(req.body.data.indexOf(',') + 1), null, (Date.now()).toString())
       .catch(e => {
         res.sendStatus(500);
@@ -342,17 +342,21 @@ app.post('/updateThreadBg', (req, res) => {
       .then(data => {
         if (!data) return;
         client.query(`UPDATE ${getTable(req.body.mode)} SET (threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self) = ($1, $2, $3, $4, $5) WHERE token = $6`, [data.link, br, pos, Boolean(req.body.hide), Boolean(req.body.self), auth_token]).then(result => {
-          res.sendStatus(200);
+          res.send(data.link);
         })
       })
     }
     else if (req.body.link){
-      client.query(`UPDATE ${getTable(req.body.mode)} SET (threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self) = ($1, $2, $3, $4, $5) WHERE token = $6`, [req.body.link, br, pos, Boolean(req.body.hide), Boolean(req.body.self), auth_token]).then(result => {
-        res.sendStatus(200);
+      isImage(res, req.body.link, () => {
+        client.query(`UPDATE ${getTable(req.body.mode)} SET (threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self) = ($1, $2, $3, $4, $5) WHERE token = $6`, [req.body.link, br, pos, Boolean(req.body.hide), Boolean(req.body.self), auth_token]).then(result => {
+          res.send(req.body.link);
+        })
       })
     }
     else{
-      res.sendStatus(400);
+      client.query(`UPDATE ${getTable(req.body.mode)} SET (thread_bg_hide, thread_bg_self) = ($1, $2) WHERE token = $3`, [Boolean(req.body.hide), Boolean(req.body.self), auth_token]).then(result => {
+        res.sendStatus(200);
+      })
     }
   })
 })
@@ -454,38 +458,40 @@ app.post('/createSmileSection', (req, res) => {
     res.sendStatus(400);
     return;
   }
-  client.query(`SELECT id, custom_smile_sections FROM ${getTable(b.mode)} WHERE token = $1 LIMIT 1`, [b.token])
-  .catch(e => {
-    res.sendStatus(400);
-  })
-  .then(result => {
-    if (!result) return;
-    if (!result.rowCount){
-      res.sendStatus(403);
-      return;
-    }
-    let sections = result.rows[0].custom_smile_sections || [];
-    if (sections.length > 9){
-      res.sendStatus(400);
-      return;
-    }
-    let section_data = {
-      id: Date.now() * 10000000 + result.rows[0].id,
-      name: b.name.substring(0, 64),
-      image: b.image
-    }
-    if (b.order){
-      sections.splice(b.order, 0, section_data)
-    }
-    else{
-      sections.push(section_data)
-    }
-    client.query(`UPDATE ${getTable(b.mode)} SET custom_smile_sections = $1 WHERE token = $2`, [sections, b.token])
+  isImage(res, b.image, () => {
+    client.query(`SELECT id, custom_smile_sections FROM ${getTable(b.mode)} WHERE token = $1 LIMIT 1`, [b.token])
     .catch(e => {
       res.sendStatus(400);
     })
-    .then(() => {
-      res.sendStatus(200);
+    .then(result => {
+      if (!result) return;
+      if (!result.rowCount){
+        res.sendStatus(403);
+        return;
+      }
+      let sections = result.rows[0].custom_smile_sections || [];
+      if (sections.length > 9){
+        res.sendStatus(400);
+        return;
+      }
+      let section_data = {
+        id: Date.now() * 10000000 + result.rows[0].id,
+        name: b.name.substring(0, 64),
+        image: b.image
+      }
+      if (b.order){
+        sections.splice(b.order, 0, section_data)
+      }
+      else{
+        sections.push(section_data)
+      }
+      client.query(`UPDATE ${getTable(b.mode)} SET custom_smile_sections = $1 WHERE token = $2`, [sections, b.token])
+      .catch(e => {
+        res.sendStatus(400);
+      })
+      .then(() => {
+        res.sendStatus(200);
+      })
     })
   })
 })
@@ -534,33 +540,35 @@ app.post('/addSmileToSection', (req, res) => {
   if (!b.section_id || !b.link || !b.title){
     res.sendStatus(400);
   }
-  client.query(`SELECT custom_smile_sections, custom_smiles FROM ${getTable(b.mode)} WHERE token = $1`, [b.token])
-  .catch(e => {
-    res.sendStatus(400)
-  })
-  .then(result => {
-    if (!result) return;
-    if (!result.rowCount){
-      res.sendStatus(403);
-      return;
-    }
-    let smiles = result.rows[0].custom_smiles || [];
-    let smile_sections = result.rows[0].custom_smile_sections;
-    if (!smile_sections || !smile_sections.find(section => {return section.id == b.section_id}) || smiles.length > 999){
-      res.sendStatus(400);
-      return;
-    }
-    smiles.push({
-      section_id: b.section_id,
-      link: b.link,
-      title: b.title
-    })
-    client.query(`UPDATE ${getTable(b.mode)} SET custom_smiles = $1 WHERE token = $2`, [smiles, b.token])
+  isImage(res, b.link, () => {
+    client.query(`SELECT custom_smile_sections, custom_smiles FROM ${getTable(b.mode)} WHERE token = $1`, [b.token])
     .catch(e => {
-      res.sendStatus(400);
+      res.sendStatus(400)
     })
-    .then(() => {
-      res.sendStatus(200);
+    .then(result => {
+      if (!result) return;
+      if (!result.rowCount){
+        res.sendStatus(403);
+        return;
+      }
+      let smiles = result.rows[0].custom_smiles || [];
+      let smile_sections = result.rows[0].custom_smile_sections;
+      if (!smile_sections || !smile_sections.find(section => {return section.id == b.section_id}) || smiles.length > 999){
+        res.sendStatus(400);
+        return;
+      }
+      smiles.push({
+        section_id: b.section_id,
+        link: b.link,
+        title: b.title
+      })
+      client.query(`UPDATE ${getTable(b.mode)} SET custom_smiles = $1 WHERE token = $2`, [smiles, b.token])
+      .catch(e => {
+        res.sendStatus(400);
+      })
+      .then(() => {
+        res.sendStatus(200);
+      })
     })
   })
 })
@@ -648,17 +656,23 @@ app.post('/createAnime2ruSmile', (req, res) => {
     res.sendStatus(400);
     return;
   }
-  client.query(`SELECT id FROM ${getTable(b.mode)} WHERE token = $1`, [b.token]).then(result => {
-    if (!result) return;
-    if (!result.rowCount){
-      res.sendStatus(403);
-    }
-    client.query('UPDATE AnimeSmiles SET data = array_append(data, $1::jsonb)', [{title: b.title, link: b.link}])
-    .catch(e => {
-      res.sendStatus(400);
-    })
-    .then(() => {
-      res.sendStatus(200);
+  if (b.link.includes('tenor')){
+    res.sendStatus(400);
+    return;
+  }
+  isImage(res, b.link, () => {
+    client.query(`SELECT id FROM ${getTable(b.mode)} WHERE token = $1`, [b.token]).then(result => {
+      if (!result) return;
+      if (!result.rowCount){
+        res.sendStatus(403);
+      }
+      client.query('UPDATE AnimeSmiles SET data = array_append(data, $1::jsonb)', [{title: b.title, link: b.link}])
+      .catch(e => {
+        res.sendStatus(400);
+      })
+      .then(() => {
+        res.sendStatus(200);
+      })
     })
   })
 })
@@ -680,6 +694,20 @@ setInterval(updateServerSmileData, 300000);
 
 Math.onRange = (min, value, max) => {
   return value >= min && value <= max;
+}
+
+function isImage(res, link, callback){
+  if (!link.startsWith('http')){
+    res.sendStatus(404);
+    return;
+  }
+  fetch(link)
+  .catch(e => {
+    res.sendStatus(404);
+  })
+  .then(r => {
+    (r.status == 200 && r.headers.get("Content-Type").includes('image')) ? callback() : res.sendStatus(404);
+  })
 }
 
 function getTable(mode){

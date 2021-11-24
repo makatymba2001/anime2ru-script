@@ -369,12 +369,12 @@ iframe:after{
     background-size: cover;
     background-position-y: inherit;
     filter: opacity(100%);
-    transition: filter 0.35s;
+    transition: filter 0.25s;
 }
 
 .forum-theme__item.forum-theme__block:hover:before{
     filter: opacity(25%);
-    transition: filter 0.35s 0.35s;
+    transition: filter 0.25s 0.2s;
 }
 
 .forum-theme__item-left, .forum-theme__item-right{

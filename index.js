@@ -37,6 +37,19 @@ const client = new Client({
 });
 client.connect();
 
+client.on('error', async () => {
+  // reboot
+  setTimeout(async () => {
+      client = new Client({
+          connectionString: process.env.DATABASE_URL,
+          ssl: {
+            rejectUnauthorized: false
+          }
+      });
+      await client.connect()
+  }, 5000)
+});
+
 app.listen(PORT, () => console.log(`Listening on ${ PORT }`));
 
 app.use(function(req, res, next) {

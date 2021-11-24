@@ -367,6 +367,7 @@ iframe:after{
     top: 0px;
     position: absolute;
     background-size: cover;
+    background-position-x: center;
     background-position-y: inherit;
     filter: opacity(100%);
     transition: filter 0.25s;

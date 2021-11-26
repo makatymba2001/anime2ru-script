@@ -144,7 +144,7 @@ app.post('/uploadImage', (req, res) => {
     return;
   }
   imgbb({
-    apiKey: "f814a4207f3ab469977dd5b515d7e005",
+    apiKey: process.env.IMGBB_TOKEN,
     name: (Date.now()).toString(),
     base64string: req.body.data.substring(req.body.data.indexOf(',') + 1)
   })

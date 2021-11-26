@@ -5,9 +5,12 @@ require('dotenv').config();
 const PORT = process.env.PORT || 5000;
 const bodyParser = require('body-parser');
 const imgur = require('imgur');
+const imgbb = require("imgbb-uploader");
 const fetch = require('node-fetch')
 const crypto = require('crypto');
 const fs = require('fs');
+
+const pepeTables = require('./smile-tables.json')
 
 imgur.setClientId(process.env.IMGUR_CLIENT_ID);
 imgur.setAPIUrl('https://api.imgur.com/3/');
@@ -140,13 +143,18 @@ app.post('/uploadImage', (req, res) => {
     res.sendStatus(400);
     return;
   }
-  imgur.uploadBase64(req.body.data.substring(req.body.data.indexOf(',') + 1), null, (Date.now()).toString())
+  imgbb({
+    apiKey: "f814a4207f3ab469977dd5b515d7e005",
+    name: (Date.now()).toString(),
+    base64string: req.body.data.substring(req.body.data.indexOf(',') + 1)
+  })
+  // imgur.uploadBase64(req.body.data.substring(req.body.data.indexOf(',') + 1), null, (Date.now()).toString())
   .catch(e => {
     res.sendStatus(500);
   })
   .then(data => {
     if (!data) return;
-    res.send(data.link)
+    res.send(data.url)
   })
 })
 
@@ -698,6 +706,10 @@ app.get('/getAnime2ruSmiles', (req, res) => {
   .then(result => {
     res.send({smiles: result.rows[0].data});
   })
+})
+
+app.get('/getAnime2ruSmileTablets', (req, res) => {
+  res.send({smiles: pepeTables});
 })
 
 // ------------------------------

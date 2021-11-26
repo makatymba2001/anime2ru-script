@@ -579,3 +579,21 @@ div[class^="banner"]{
     position: absolute;
     bottom: -3px;
 }
+
+.most-used-container.with-sections{
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.most-used-container-section{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+
+.most-used-container-section:after {
+    content: "";
+    flex: auto;
+}

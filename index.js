@@ -243,7 +243,7 @@ app.post('/registerUser', (req, res) => {
         return users.link.endsWith('.' + auth_id)
       })){
         // Регистрация пройдена
-        client.query(`INSERT INTO ${getTable(req.body.mode)} (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore, thread_bg_hide, thread_bg_self) VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT) RETURNING token`, [auth_id, auth_password, token])
+        client.query(`INSERT INTO ScriptUsers (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore, thread_bg_hide, thread_bg_self, user_type) VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, 'dota2.ru') RETURNING token`, [auth_id, auth_password, token])
         .catch(e => {
           res.sendStatus(403);
         })
@@ -260,7 +260,7 @@ app.post('/registerUser', (req, res) => {
   }
   else if (req.body.mode === "esportsgames.ru"){
     // Регистрация пройдена
-    client.query(`INSERT INTO ${getTable(req.body.mode)} (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore, thread_bg_hide, thread_bg_self) VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT) RETURNING token`, [auth_id, auth_password, token])
+    client.query(`INSERT INTO ScriptUsers (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore, thread_bg_hide, thread_bg_self, user_type) VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, 'esportsgames.ru') RETURNING token`, [auth_id, auth_password, token])
     .catch(e => {
       res.sendStatus(403);
     })

@@ -164,9 +164,13 @@ let server_smiles_data = {};
 function updateServerSmileData(){
   fetch('https://dota2.ru/replies/get_smiles').then(res => {
     return res.text()
-  }).then(data => {
+  })
+  .catch(e => {
+    setTimeout(updateServerSmileData, 5000);
+  })
+  .then(data => {
     if (data?.trim()?.startsWith('<')){
-      setTimeout(updateServerSmileData, 5000)
+      setTimeout(updateServerSmileData, 5000);
     }
     else{
       Object.values(JSON.parse(data).smiles.smiles).flat().forEach(smile_data => {
@@ -199,7 +203,7 @@ app.post('/authorize', (req, res) => {
   let auth_token = b.token;
   if (auth_token){
     // Пользователь имеет токен? Проверить его на валидность и вернуть юзера
-    client.query(`SELECT id, threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self, custom_smile_sections FROM ${getTable(req.body.mode)} WHERE token = $1`, [auth_token]).then(result => {
+    client.query(`SELECT id, threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self, custom_smile_sections, use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users FROM ${getTable(req.body.mode)} WHERE token = $1`, [auth_token]).then(result => {
       result.rowCount ? res.send(result.rows[0]) : res.sendStatus(401);
     })
   }
@@ -208,7 +212,7 @@ app.post('/authorize', (req, res) => {
     let auth_password = null;
     if (b.password) auth_password = crypto.createHash('md5').update(b.password).digest('hex');
     let auth_id = Number(b.id);
-    client.query(`SELECT id, token, threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self, custom_smile_sections FROM ${getTable(req.body.mode)} WHERE password = $1 and id = $2 LIMIT 1`, [auth_password, auth_id]).then(result => {
+    client.query(`SELECT id, token, threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self, custom_smile_sections, use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users FROM ${getTable(req.body.mode)} WHERE password = $1 and id = $2 LIMIT 1`, [auth_password, auth_id]).then(result => {
       result.rowCount ? res.send(result.rows[0]) : res.sendStatus(404);
     })
   }
@@ -243,7 +247,9 @@ app.post('/registerUser', (req, res) => {
         return users.link.endsWith('.' + auth_id)
       })){
         // Регистрация пройдена
-        client.query(`INSERT INTO ScriptUsers (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore, thread_bg_hide, thread_bg_self, user_type) VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, 'dota2.ru') RETURNING token`, [auth_id, auth_password, token])
+        client.query(`INSERT INTO ScriptUsers 
+        (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore, thread_bg_hide, thread_bg_self, user_type, use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users) 
+        VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, 'dota2.ru', FALSE, FALSE, null, null, null) RETURNING token`, [auth_id, auth_password, token])
         .catch(e => {
           res.sendStatus(403);
         })
@@ -260,7 +266,9 @@ app.post('/registerUser', (req, res) => {
   }
   else if (req.body.mode === "esportsgames.ru"){
     // Регистрация пройдена
-    client.query(`INSERT INTO ScriptUsers (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore, thread_bg_hide, thread_bg_self, user_type) VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, 'esportsgames.ru') RETURNING token`, [auth_id, auth_password, token])
+    client.query(`INSERT INTO ScriptUsers 
+    (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore, thread_bg_hide, thread_bg_self, user_type, use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users) 
+    VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, 'esportsgames.ru', FALSE, FALSE, null, null, null) RETURNING token`, [auth_id, auth_password, token])
     .catch(e => {
       res.sendStatus(403);
     })
@@ -731,6 +739,7 @@ function isImage(res, link, callback){
     res.sendStatus(404);
   })
   .then(r => {
+    // console.log(r.headers.get('Content-Length'));
     (r.status == 200 && r.headers.get("Content-Type").includes('image')) ? callback() : res.sendStatus(404);
   })
 }

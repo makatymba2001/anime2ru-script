@@ -722,6 +722,43 @@ app.get('/getAnime2ruSmileTablets', (req, res) => {
 
 // ------------------------------
 
+Array.prototype.trimNclear = function(){
+  var result = this;
+  result.forEach(function(i, index){
+    result[index] = i.trim();
+  });
+  return result.filter(function(i){
+    return i;
+  });
+}
+
+app.post('/updateThreadSuperIgnore', (req, res) => {
+  if (!req.body || !req.body.mode){
+    res.sendStatus(400);
+    return;
+  }
+  let use_super = !!req.body.use_super_ignore;
+  let ignored_to_super = !!req.body.ignored_to_super;
+  let users = (req.body.users || [])?.trimNclear();
+  let include = (req.body.include || [])?.trimNclear();
+  let exclude = (req.body.exclude || [])?.trimNclear();
+  client.query(`UPDATE ${getTable(req.body.mode)} SET (use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users) = 
+  ($1, $2, $3, $4, $5) WHERE token = $6 RETURNING use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users`, [use_super, ignored_to_super, include, exclude, users, req.body.token])
+  .catch(e => {
+    res.sendStatus(400);
+    return;
+  }).then(result => {
+    if (!result) return;
+    if (!result.rowCount) {
+      res.sendStatus(403);
+      return;
+    }
+    res.send(result.rows[0]);
+  })
+})
+
+// ------------------------------
+
 updateServerSmileData();
 setInterval(updateServerSmileData, 300000);
 

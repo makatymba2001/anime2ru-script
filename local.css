@@ -309,13 +309,20 @@ iframe:after{
     display: flex;
 }
 
-#main-settings-container div input{
+#main-settings-container div input, #main-settings-container div textarea{
     box-sizing: border-box;
     outline: none;
     border: none;
     color: #c2c2c4;
     background-color: #202020;
     padding: 5px;
+}
+
+#main-settings-container div textarea{
+    resize: vertical;
+    min-height: 27px;
+    height: 27px;
+    max-height: 100px;
 }
 
 #main-settings-container .row{
@@ -596,4 +603,39 @@ div[class^="banner"]{
 .most-used-container-section:after {
     content: "";
     flex: auto;
+}
+
+.absolute-container{
+    position: relative;
+    display: flex !important;
+    width: 100%;
+}
+
+.absolute-container .absolute{
+    display: flex !important;
+    gap: 0px !important;
+    width: 100%;
+}
+
+.ignore-users-query{
+    background-color: #1b1b20;
+    overflow-y: scroll;
+    max-height: 97px;
+}
+
+.ignore-users-query > div{
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center;
+    padding: 5px;
+    cursor: pointer;
+}
+
+.ignore-users-query > div:hover{
+    background-color: #29292f;
+}
+
+.ignore-users-query > div > img{
+    height: 20px;
+    margin-right: 5px;
 }

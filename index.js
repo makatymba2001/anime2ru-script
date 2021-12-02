@@ -247,11 +247,10 @@ app.post('/registerUser', (req, res) => {
         if (data.find(users => {
           return users.link.endsWith('.' + auth_id)
         })){
-          console.log('register confirmed')
           // Регистрация пройдена
           client.query(`INSERT INTO ScriptUsers 
-          (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore, thread_bg_hide, thread_bg_self, user_type, use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users) 
-          VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, 'dota2.ru', FALSE, FALSE, null, null, null) RETURNING token`, [auth_id, auth_password, token])
+          (id, password, token, user_type) 
+          VALUES ($1, $2, $3, 'dota2.ru') RETURNING token`, [auth_id, auth_password, token])
           .catch(e => {
             res.sendStatus(403);
           })
@@ -270,8 +269,8 @@ app.post('/registerUser', (req, res) => {
   else if (req.body.mode === "esportsgames.ru"){
     // Регистрация пройдена
     client.query(`INSERT INTO ScriptUsers 
-    (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore, thread_bg_hide, thread_bg_self, user_type, use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users) 
-    VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, 'esportsgames.ru', FALSE, FALSE, null, null, null) RETURNING token`, [auth_id, auth_password, token])
+    (id, password, token, user_type, ) 
+    VALUES ($1, $2, $3, 'esportsgames.ru' RETURNING token`, [auth_id, auth_password, token])
     .catch(e => {
       res.sendStatus(403);
     })
@@ -475,6 +474,58 @@ app.post('/updateStyles', (req, res) => {
     else{
       res.sendStatus(200);
     }
+  })
+})
+
+// ------------------------------
+
+app.post('/updateCustomUserStatus', (req, res) => {
+  if (!req.body || !req.body.mode){
+    res.sendStatus(400);
+    return;
+  }
+  if (!req.body.id){
+    res.sendStatus(400);
+    return;
+  }
+  client.query(`SELECT custom_users_status FROM ${getTable(req.body.mode)} WHERE token = $1`, [req.body.token])
+  .catch(e => {
+    res.sendStatus(400);
+  })
+  .then(result => {
+    if (!result) return;
+    if (!result.rowCount){
+      res.sendStatus(403);
+      return;
+    }
+    let obj = result.rows[0].custom_users_status;
+    obj[req.body.id] = req.body.status;
+    client.query(`UPDATE ${getTable(req.body.mode)} SET custom_users_status = $1 WHERE token = $2`, [obj, req.body.token])
+    .catch(e => {
+      res.sendStatus(500);
+    })
+    .then(result => {
+      res.sendStatus(200);
+    })
+  })
+})
+
+app.post('/getCustomUsersStatus', (req, res) => {
+  if (!req.body || !req.body.mode){
+    res.sendStatus(400);
+    return;
+  }
+  client.query(`SELECT custom_users_status FROM ${getTable(req.body.mode)} WHERE token = $1`, [req.body.token])
+  .catch(e => {
+    res.sendStatus(400);
+  })
+  .then(result => {
+    if (!result) return;
+    if (!result.rowCount){
+      res.sendStatus(403);
+      return;
+    }
+    res.send(result.rows[0]?.custom_users_status);
   })
 })
 

@@ -639,3 +639,14 @@ div[class^="banner"]{
     height: 20px;
     margin-right: 5px;
 }
+
+.forum-theme__item-status.custom{
+    display: block;
+    background-color: transparent !important;
+    color: #8f8f91 !important;
+}
+
+.forum-theme__item-status.custom.editable{
+    background-color: rgba(0, 0, 0, 0.5) !important;
+    color: #ababb2 !important
+}

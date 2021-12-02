@@ -223,7 +223,6 @@ app.post('/registerUser', (req, res) => {
     res.sendStatus(400);
     return;
   }
-  console.log(req.body);
   let auth_id = Number(req.body.id);
   let auth_password = crypto.createHash('md5').update(req.body.password).digest('hex');
   let token = crypto.randomBytes(32).toString('hex') + Date.now().toString();
@@ -233,39 +232,40 @@ app.post('/registerUser', (req, res) => {
   let verif_object;
   if (req.body.mode === "dota2.ru") {
     verif_object = {pid: 26000919, smile_id: "1538"};
-    fetch("https://dota2.ru/forum/api/forum/showPostRates", {method: "POST", headers: headers, body: JSON.stringify(verif_object)})
-    .catch(e => {
-      res.sendStatus(500)
-    })
-    .then(r => { if (r) return r.json()})
-    .catch(e => {
-      res.sendStatus(500);
-      return;
-    })
-    .then(data => {
-      if (!data) return;
-      console.log(data)
-      if (data.find(users => {
-        return users.link.endsWith('.' + auth_id)
-      })){
-        console.log('register confirmed')
-        // Регистрация пройдена
-        client.query(`INSERT INTO ScriptUsers 
-        (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore, thread_bg_hide, thread_bg_self, user_type, use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users) 
-        VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, 'dota2.ru', FALSE, FALSE, null, null, null) RETURNING token`, [auth_id, auth_password, token])
-        .catch(e => {
-          res.sendStatus(403);
-        })
-        .then(result => {
-          if (!result) return;
-          res.send(result.rows[0])
-        })
-      }
-      else{
-        // Регистрация не пройдена
-        res.sendStatus(404);
-      }
-    })
+    setTimeout(() => {
+      fetch("https://dota2.ru/forum/api/forum/showPostRates", {method: "POST", headers: headers, body: JSON.stringify(verif_object)})
+      .catch(e => {
+        res.sendStatus(500)
+      })
+      .then(r => { if (r) return r.json()})
+      .catch(e => {
+        res.sendStatus(500);
+        return;
+      })
+      .then(data => {
+        if (!data) return;
+        if (data.find(users => {
+          return users.link.endsWith('.' + auth_id)
+        })){
+          console.log('register confirmed')
+          // Регистрация пройдена
+          client.query(`INSERT INTO ScriptUsers 
+          (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore, thread_bg_hide, thread_bg_self, user_type, use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users) 
+          VALUES ($1, $2, $3, null, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, 'dota2.ru', FALSE, FALSE, null, null, null) RETURNING token`, [auth_id, auth_password, token])
+          .catch(e => {
+            res.sendStatus(403);
+          })
+          .then(result => {
+            if (!result) return;
+            res.send(result.rows[0])
+          })
+        }
+        else{
+          // Регистрация не пройдена
+          res.sendStatus(404);
+        }
+      })
+    }, 250)
   }
   else if (req.body.mode === "esportsgames.ru"){
     // Регистрация пройдена

@@ -196,6 +196,7 @@ app.post('/authorize', (req, res) => {
     return;
   }
   let b = req.body;
+  console.log(req.body);
   if (!b.token && !b.password && !b.id){
     res.sendStatus(401);
     return;
@@ -211,6 +212,7 @@ app.post('/authorize', (req, res) => {
     // Пользователь не имеет токен? Проверить по паролю и id
     let auth_password = null;
     if (b.password) auth_password = crypto.createHash('md5').update(b.password).digest('hex');
+    console.log(auth_password)
     let auth_id = Number(b.id);
     client.query(`SELECT id, token, threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self, custom_smile_sections, use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users FROM ${getTable(req.body.mode)} WHERE password = $1 and id = $2 LIMIT 1`, [auth_password, auth_id]).then(result => {
       result.rowCount ? res.send(result.rows[0]) : res.sendStatus(404);
@@ -223,6 +225,7 @@ app.post('/registerUser', (req, res) => {
     res.sendStatus(400);
     return;
   }
+  console.log(req.body);
   let auth_id = Number(req.body.id);
   let auth_password = crypto.createHash('md5').update(req.body.password).digest('hex');
   let token = crypto.randomBytes(32).toString('hex') + Date.now().toString();
@@ -246,6 +249,7 @@ app.post('/registerUser', (req, res) => {
       if (data.find(users => {
         return users.link.endsWith('.' + auth_id)
       })){
+        console.log('register confirmed')
         // Регистрация пройдена
         client.query(`INSERT INTO ScriptUsers 
         (id, password, token, threads_bg, thread_bg_br, thread_bg_position, threads_bg_ignore, thread_bg_hide, thread_bg_self, user_type, use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users) 

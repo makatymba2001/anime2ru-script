@@ -446,10 +446,6 @@ iframe:after{
     border: none;
 }
 
-.fa-user-edit{
-    display: none;
-}
-
 time{
     z-index: 1;
 }
@@ -649,4 +645,8 @@ div[class^="banner"]{
 .forum-theme__item-status.custom.editable{
     background-color: rgba(0, 0, 0, 0.5) !important;
     color: #ababb2 !important
+}
+
+.adsincont{
+    display: none;
 }

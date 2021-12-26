@@ -10,6 +10,21 @@ const fetch = require('node-fetch')
 const crypto = require('crypto');
 const fs = require('fs');
 
+// let smile_tablets_iterator = 0;
+// let pepeTables = [];
+// while(fs.existsSync('./static/smileTablets/' + smile_tablets_iterator)){
+//     let section_index = smile_tablets_iterator++;
+//     let section_array = [];
+//     pepeTables.push(section_array);
+//     fs.readdir('./static/smileTablets/' + section_index, {encoding: 'utf-8'}, (error, files) => {
+//         files.forEach((file, index) => {
+//             fs.readFile('./static/smileTablets/' + section_index + '/' + file, {encoding: 'base64url'}, (error, data) => {
+//                 section_array
+//             })
+//         })
+//     })
+// }
+
 const pepeTables = require('./smile-tables.json')
 
 imgur.setClientId(process.env.IMGUR_CLIENT_ID);
@@ -50,7 +65,7 @@ client.on('error', async () => {
           }
       });
       await client.connect()
-  }, 5000)
+  }, 500)
 });
 
 app.listen(PORT, () => console.log(`Listening on ${ PORT }`));

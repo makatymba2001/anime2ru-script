@@ -177,22 +177,19 @@ app.post('/uploadImage', (req, res) => {
 
 let server_smiles_data = {};
 function updateServerSmileData(){
-  fetch('https://dota2.ru/replies/get_smiles').then(res => {
-    return res.text()
-  })
-  .catch(e => {
-    setTimeout(updateServerSmileData, 5000);
-  })
-  .then(data => {
-    if (data?.trim()?.startsWith('<')){
-      setTimeout(updateServerSmileData, 5000);
-    }
-    else{
-      Object.values(JSON.parse(data).smiles.smiles).flat().forEach(smile_data => {
-        server_smiles_data[smile_data.id] = 'https://dota2.ru/img/forum/emoticons/' + smile_data.filename;
-      })
-    }
-  })
+    fetch('https://dota2.ru/replies/get_smiles')
+    .then(res => {
+        return res.json()
+    })
+    .catch(e => {
+        setTimeout(updateServerSmileData, 5000);
+    })
+    .then(data => {
+        if (!data) return;
+        Object.values(data.smiles.smiles).flat().forEach(smile_data => {
+            server_smiles_data[smile_data.id] = 'https://dota2.ru/img/forum/emoticons/' + smile_data.filename;
+        })
+    })
 }
 app.get(/\/smile/, (req, res) => {
   let match = req.url.match(/\/smile\/([0-9]+)(\/|$)/);
@@ -593,7 +590,6 @@ app.post('/createSmileSection', (req, res) => {
     })
   })
 })
-
 app.post('/deleteSmileSection', (req, res) => {
   if (!req.body || !req.body.mode){
     res.sendStatus(400);
@@ -628,7 +624,6 @@ app.post('/deleteSmileSection', (req, res) => {
     })
   })
 })
-
 app.post('/addSmileToSection', (req, res) => {
   if (!req.body || !req.body.mode){
     res.sendStatus(400);
@@ -670,7 +665,6 @@ app.post('/addSmileToSection', (req, res) => {
     })
   })
 })
-
 app.post('/deleteSmileFromSection', (req, res) => {
   if (!req.body || !req.body.mode){
     res.sendStatus(400);
@@ -715,7 +709,6 @@ app.post('/deleteSmileFromSection', (req, res) => {
     })
   })
 })
-
 app.post('/getSmilesInSection', (req, res) => {
   if (!req.body || !req.body.mode){
     res.sendStatus(400);
@@ -743,7 +736,6 @@ app.post('/getSmilesInSection', (req, res) => {
     })
   })
 })
-
 app.post('/createAnime2ruSmile', (req, res) => {
   if (!req.body || !req.body.mode){
     res.sendStatus(400);
@@ -774,7 +766,6 @@ app.post('/createAnime2ruSmile', (req, res) => {
     })
   })
 })
-
 app.get('/getAnime2ruSmiles', (req, res) => {
   client.query('SELECT data from AnimeSmiles')
   .catch(e => {
@@ -784,11 +775,160 @@ app.get('/getAnime2ruSmiles', (req, res) => {
     res.send({smiles: result.rows[0].data});
   })
 })
-
 app.get('/getAnime2ruSmileTablets', (req, res) => {
   res.send({smiles: pepeTables});
 })
 
+// ------------------------------
+// ------------------------------
+// ------------------------------
+
+let api_router = express.Router();
+
+api_router.post('/getUserThreadsData', (req, res) => {
+    if (!req.body || !req.body.mode){
+        res.status(400).send({error: 'Body and mode required!'});
+        return;
+    }
+    let ids = req.body.ids || [];
+    let self_id = req.body.id;
+    const executer = (users_bg, client_user) => {
+        let result_obj = {};
+        let is_client_user = false;
+        if (client_user.rowCount){
+            is_client_user = true;
+            client_user = client_user.rows[0];
+        }
+        if (users_bg.rowCount) users_bg.rows.forEach(row => {
+            let row_bg = null;
+            if ((client_user.id === row.id || !row.thread_bg_self) && row.threads_bg){
+                row_bg = `background-image: linear-gradient(to left, rgba(38, 39, 44, ${row.thread_bg_br / 100}), rgba(38, 39, 44, ${row.thread_bg_br / 100})), url(${row.threads_bg}); background-position-y: ${row.thread_bg_position}%;`;
+            }
+            result_obj[row.id] = {
+                thread_bg: row_bg,
+                thread_bg_ignore: false,
+                custom_status: null,
+            }
+        })
+        if (is_client_user){
+            Object.entries(client_user.custom_users_status).forEach(([user_id, status]) => {
+                if (ids.includes(user_id)){
+                    if (result_obj[user_id]) {
+                        result_obj[user_id].custom_status = status || null;
+                    } else {
+                        result_obj[user_id] = {
+                            thread_bg: null,
+                            thread_bg_ignore: false,
+                            custom_status: status || null,
+                        }
+                    }
+                }
+            });
+            client_user.threads_bg_ignore.forEach(id => {
+                if (result_obj[id]) result_obj[id].thread_bg_ignore = true;
+            })
+        }
+        res.send(result_obj)
+    }
+    if (!self_id){
+        client.query(`SELECT id, threads_bg, thread_bg_br, thread_bg_position, thread_bg_self FROM ${getTable(req.body.mode)} WHERE array[id] && $1`, [ids]).then(executer)
+    }
+    else{
+        Promise.all([
+            client.query(`SELECT id, threads_bg, thread_bg_br, thread_bg_position, thread_bg_self FROM ${getTable(req.body.mode)} WHERE (array[id] && $1)`, [ids]),
+            client.query(`SELECT id, threads_bg_ignore, thread_bg_hide, custom_users_status FROM ${getTable(req.body.mode)} WHERE id = $1`, [self_id]),
+        ])
+        .then(([users_bg, client_user]) => {
+            executer(users_bg, client_user)
+        })
+    }
+})
+
+api_router.post('/addUserToThreadIgnore', (req, res) => {
+    if (!req.body || !req.body.mode){
+        res.status(400).send({error: 'Body and mode required!'});
+        return;
+    }
+    let auth_token = req.body.token;
+    let user_to_ignore = Number(req.body.id);
+    if (!user_to_ignore || user_to_ignore < 0 ) return;
+    client.query(`SELECT threads_bg_ignore FROM ${getTable(req.body.mode)} WHERE token = $1 LIMIT 1`, [auth_token]).then(result => {
+        if (!result.rowCount){
+            res.status(401).send({error: 'User not authorized'});
+        } else if (result.rows[0].id == user_to_ignore){
+            res.status(400).send({error: 'You can\'t add self to ignore'})
+        } else if (result.rows[0].threads_bg_ignore.includes(user_to_ignore)){
+            res.status(400).send({error: 'User already ignored'});
+            return;
+        }
+        client.query(`UPDATE ${getTable(req.body.mode)} SET threads_bg_ignore = array_append(threads_bg_ignore, $1) WHERE token = $2`, [user_to_ignore, auth_token])
+        .then(result => {
+            res.sendStatus(200);
+        })
+    })
+})
+
+api_router.post('/removeUserFromThreadIgnore', (req, res) => {
+    if (!req.body || !req.body.mode){
+        res.status(400).send({error: 'Body and mode required!'});
+        return;
+    }
+    let auth_token = req.body.token;
+    let user_to_ignore = Number(req.body.id);
+    if (!user_to_ignore || user_to_ignore < 0 ) return;
+    client.query(`SELECT id, threads_bg_ignore FROM ${getTable(req.body.mode)} WHERE token = $1 LIMIT 1`, [auth_token]).then(result => {
+        if (!result.rowCount){
+            res.status(401).send({error: 'User not authorized'});
+        } else if (result.rows[0].id == user_to_ignore){
+            res.status(400).send({error: 'You can\'t remove self from ignore'})
+        } else if (!result.rows[0].threads_bg_ignore.includes(user_to_ignore)){
+            res.status(400).send({error: 'User already not ignored'});
+            return;
+        }
+        client.query(`UPDATE ${getTable(req.body.mode)} SET threads_bg_ignore = array_remove(threads_bg_ignore, $1) WHERE token = $2`, [user_to_ignore, auth_token]).then(result => {
+            res.sendStatus(200);
+        })
+    })
+})
+
+// ------------------------------
+
+api_router.post('/updateUserCustomStatus', (req, res) => {
+    if (!req.body || !req.body.mode){
+        res.status(400).send({error: 'Body and mode required!'});
+        return;
+    }
+    let user_id = Number(req.body.id);
+    if (!user_id || user_id < 0){
+        res.status(400).send({error: 'Invalid user id!'});
+        return;
+    }
+    client.query(`SELECT custom_users_status FROM ${getTable(req.body.mode)} WHERE token = $1`, [req.body.token])
+    .catch(e => {
+        res.status(500).send({error: 'Internal Server Error'});
+    })
+    .then(result => {
+        if (!result) return;
+        if (!result.rowCount){
+            res.status(401).send({error: 'User not authorized'});
+            return;
+        }
+        let status_object = result.rows[0].custom_users_status;
+        status_object[req.body.id] = req.body.status;
+        client.query(`UPDATE ${getTable(req.body.mode)} SET custom_users_status = $1 WHERE token = $2`, [status_object, req.body.token])
+        .catch(e => {
+          res.status(500).send({error: 'Internal Server Error'});
+        })
+        .then(result => {
+          res.sendStatus(200);
+        })
+    })
+})
+
+app.use('/api', api_router);
+
+// ------------------------------
+// ------------------------------
 // ------------------------------
 
 Array.prototype.trimNclear = function(){

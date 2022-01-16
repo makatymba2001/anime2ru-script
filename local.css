@@ -215,7 +215,6 @@ iframe:after{
     top: 50%;
     transform: translateY(-50%);
     width: 800px;
-    /* box-sizing: border-box; */
     min-height: 535px;
     position: relative;
     padding: 20px;
@@ -637,16 +636,39 @@ div[class^="banner"]{
 }
 
 .forum-theme__item-status.custom{
+    min-height: 19px;
     display: block;
     background-color: transparent !important;
     color: #8f8f91 !important;
 }
 
+.forum-theme__item-status.custom.empty:not(.editable){
+    color: #ababb288 !important;
+}
+
 .forum-theme__item-status.custom.editable{
     background-color: rgba(0, 0, 0, 0.5) !important;
-    color: #ababb2 !important
+    color: #ababb2 !important;
+}
+
+.forum-theme__item-status.custom.pressed{
+    pointer-events: none;
+    opacity: 0.8;
 }
 
 .adsincont{
     display: none;
+}
+
+.ignore-background-button.pressed{
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.ignore-background-button:after{
+    content: 'Скрыть фон'
+}
+
+.ignore-background-button.ignored:after{
+    content: 'Показать фон'
 }

@@ -215,7 +215,10 @@ app.post('/authorize', (req, res) => {
   let auth_token = b.token;
   if (auth_token){
     // Пользователь имеет токен? Проверить его на валидность и вернуть юзера
-    client.query(`SELECT id, threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self, custom_smile_sections, use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users FROM ${getTable(req.body.mode)} WHERE token = $1`, [auth_token]).then(result => {
+    client.query(`UPDATE ${getTable(req.body.mode)} SET last_authorize_date = NOW() WHERE token = $1
+    RETURNING id, threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self, custom_smile_sections,
+    use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users`,
+    [auth_token]).then(result => {
       result.rowCount ? res.send(result.rows[0]) : res.sendStatus(401);
     })
   }
@@ -224,7 +227,10 @@ app.post('/authorize', (req, res) => {
     let auth_password = null;
     if (b.password) auth_password = crypto.createHash('md5').update(b.password).digest('hex');
     let auth_id = Number(b.id);
-    client.query(`SELECT id, token, threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self, custom_smile_sections, use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users FROM ${getTable(req.body.mode)} WHERE password = $1 and id = $2 LIMIT 1`, [auth_password, auth_id]).then(result => {
+    client.query(`UPDATE ${getTable(req.body.mode)} SET last_authorize_date = NOW() WHERE password = $1 and id = $2
+    RETURNING id, token, threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self, custom_smile_sections,
+    use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users`,
+    [auth_password, auth_id]).then(result => {
       result.rowCount ? res.send(result.rows[0]) : res.sendStatus(404);
     })
   }

@@ -55,7 +55,8 @@ const client = new Client({
 });
 client.connect();
 
-client.on('error', async () => {
+client.on('error', async (e) => {
+    console.log(e)
   // reboot
   setTimeout(async () => {
       client = new Client({
@@ -70,11 +71,7 @@ client.on('error', async () => {
 
 app.listen(PORT, () => console.log(`Listening on ${ PORT }`));
 
-app.use(function(req, res, next) {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept".toLowerCase());
-  next();
-});
+app.use(require('cors')());
 
 // ------------------------------
 
@@ -118,6 +115,22 @@ app.get('/stickyHeader', (req, res) => {
   res.setHeader('Content-Type', 'text/css');
   res.sendFile(__dirname + '/sticky.css')
 })
+
+let fontsRouter = express.Router();
+
+fontsRouter.get('/:font_name', (req, res) => {
+    let font_name = req.params.font_name;
+    if (fs.existsSync('./static/fonts/' + font_name + '.ttf')) font_name += ".ttf";
+    else if (fs.existsSync('./static/fonts/' + font_name + '.otf')) font_name += ".otf";
+    else return void res.status(404).send();
+    res.sendFile(font_name, {
+        root: './static/fonts/'
+    })
+})
+
+app.use('/fonts', fontsRouter);
+
+
 
 // ------------------------------
 
@@ -217,7 +230,7 @@ app.post('/authorize', (req, res) => {
     // Пользователь имеет токен? Проверить его на валидность и вернуть юзера
     client.query(`UPDATE ${getTable(req.body.mode)} SET last_authorize_date = NOW() WHERE token = $1
     RETURNING id, threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self, custom_smile_sections,
-    use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users`,
+    use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users, custom_users_status`,
     [auth_token]).then(result => {
       result.rowCount ? res.send(result.rows[0]) : res.sendStatus(401);
     })
@@ -229,7 +242,7 @@ app.post('/authorize', (req, res) => {
     let auth_id = Number(b.id);
     client.query(`UPDATE ${getTable(req.body.mode)} SET last_authorize_date = NOW() WHERE password = $1 and id = $2
     RETURNING id, token, threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self, custom_smile_sections,
-    use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users`,
+    use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users, custom_users_status`,
     [auth_password, auth_id]).then(result => {
       result.rowCount ? res.send(result.rows[0]) : res.sendStatus(404);
     })
@@ -237,7 +250,7 @@ app.post('/authorize', (req, res) => {
 })
 
 app.post('/registerUser', (req, res) => {
-  if (!req.body || req.body.password.length < 2 || !req.body.mode){
+  if (!req.body || req.body.password.length < 4 || !req.body.mode){
     res.sendStatus(400);
     return;
   }
@@ -268,7 +281,8 @@ app.post('/registerUser', (req, res) => {
           // Регистрация пройдена
           client.query(`INSERT INTO ScriptUsers 
           (id, password, token, user_type) 
-          VALUES ($1, $2, $3, 'dota2.ru') RETURNING token`, [auth_id, auth_password, token])
+          VALUES ($1, $2, $3, 'dota2.ru') RETURNING id, threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self, custom_smile_sections,
+          use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users, custom_users_status`, [auth_id, auth_password, token])
           .catch(e => {
             res.sendStatus(403);
           })
@@ -287,8 +301,9 @@ app.post('/registerUser', (req, res) => {
   else if (req.body.mode === "esportsgames.ru"){
     // Регистрация пройдена
     client.query(`INSERT INTO ScriptUsers 
-    (id, password, token, user_type, ) 
-    VALUES ($1, $2, $3, 'esportsgames.ru' RETURNING token`, [auth_id, auth_password, token])
+    (id, password, token, user_type) 
+    VALUES ($1, $2, $3, 'esportsgames.ru') RETURNING id, threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self, custom_smile_sections,
+    use_super_ignore, ignored_users_to_super, thread_ignore_include, thread_ignore_exclude, thread_ignore_users, custom_users_status`, [auth_id, auth_password, token])
     .catch(e => {
       res.sendStatus(403);
     })
@@ -305,7 +320,7 @@ app.post('/changePassword', (req, res) => {
     return;
   }
   let b = req.body;
-  if (!b.old_password || !b.new_password || !b.token){
+  if (!b.old_password || !b.new_password || !b.token || b.new_password.length < 4){
     res.sendStatus(401);
     return;
   }
@@ -329,7 +344,7 @@ app.post('/getThreadsBg', (req, res) => {
     res.sendStatus(400);
     return;
   }
-  let ids = req.body.ids || [];
+  let ids = (req.body.ids || []).map(i => +i);
   let self_id = req.body.id;
   const filter = (result, user) => {
     let result_obj = {}, ignore_array = [];
@@ -337,13 +352,12 @@ app.post('/getThreadsBg', (req, res) => {
     if (user?.rows && user.rows[0]) user_data = user.rows[0];
     ignore_array = user_data?.threads_bg_ignore || [];
     result.rows.forEach(elem => {
-      let bg = elem.threads_bg ? `background-image: linear-gradient(to left, rgba(38, 39, 44, ${elem.thread_bg_br / 100}), rgba(38, 39, 44, ${elem.thread_bg_br / 100})), url(${elem.threads_bg}); background-position-y: ${elem.thread_bg_position}%;` : null;
-      if (elem.thread_bg_self && elem.id != user_data.id) bg = null;
-      if (user_data.thread_bg_hide && elem.id != user_data.id) bg = null;
-      result_obj[elem.id] = {
-        bg: bg,
-        ignored: ignore_array.includes(elem.id)
-      }
+        let bg = elem.threads_bg ? `background-image: linear-gradient(to left, rgba(38, 39, 44, ${elem.thread_bg_br / 100}), rgba(38, 39, 44, ${elem.thread_bg_br / 100})), url(${elem.threads_bg}); background-position-y: ${elem.thread_bg_position}%;` : null;
+        if (elem.thread_bg_self && elem.id != user_data.id) bg = null;
+        result_obj[elem.id] = {
+            bg: bg,
+            ignored: ignore_array.includes(elem.id)
+        }
     })
     res.send(result_obj)
   }
@@ -367,45 +381,50 @@ app.post('/updateThreadBg', (req, res) => {
     return;
   }
   let auth_token = req.body.token;
-  let br = req.body.br ?? 99999;
-  let pos = req.body.pos ?? 99999;
-  if (!Math.onRange(0, br, 100) || !Math.onRange(0, pos, 100)){
+  let br = req.body.br ?? req.body.brightness ?? 99999;
+  let pos = req.body.pos ?? req.body.position ?? 99999;
+  if (req.body.type !== 'remove' && (!Math.onRange(0, br, 100) || !Math.onRange(0, pos, 100))){
     res.sendStatus(400);
     return;
   }
   client.query(`SELECT * FROM ${getTable(req.body.mode)} WHERE token = $1 LIMIT 1`, [auth_token]).then(result => {
     if (!result.rowCount) {
-      res.sendStatus(401);
-      return;
+        res.sendStatus(401);
+        return;
     }
-    if (req.body.data === null){
-      client.query(`UPDATE ${getTable(req.body.mode)} SET (threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self) = ($1, DEFAULT, DEFAULT, $2, $3) WHERE token = $4`, [null, Boolean(req.body.hide), Boolean(req.body.self), auth_token]).then(result => {
-        res.sendStatus(200);
-      })
-    }
-    else if (req.body.data){
-      imgur.uploadBase64(req.body.data.substring(req.body.data.indexOf(',') + 1), null, (Date.now()).toString())
-      .catch(e => {
-        res.sendStatus(500);
-      })
-      .then(data => {
-        if (!data) return;
-        client.query(`UPDATE ${getTable(req.body.mode)} SET (threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self) = ($1, $2, $3, $4, $5) WHERE token = $6`, [data.link, br, pos, Boolean(req.body.hide), Boolean(req.body.self), auth_token]).then(result => {
-          res.send(data.link);
+    if (req.body.type === 'remove' || req.body.data === null){
+        client.query(`UPDATE ${getTable(req.body.mode)} SET (threads_bg, thread_bg_br, thread_bg_position, thread_bg_self) = ($1, 50, 50, $2) WHERE token = $3`,
+        [null, Boolean(req.body.hide || req.body.self), auth_token]).then(result => {
+            res.sendStatus(200);
         })
-      })
+        return;
     }
-    else if (req.body.link){
-      isImage(res, req.body.link, () => {
-        client.query(`UPDATE ${getTable(req.body.mode)} SET (threads_bg, thread_bg_br, thread_bg_position, thread_bg_hide, thread_bg_self) = ($1, $2, $3, $4, $5) WHERE token = $6`, [req.body.link, br, pos, Boolean(req.body.hide), Boolean(req.body.self), auth_token]).then(result => {
-          res.send(req.body.link);
+    if (req.body.data && (!req.body.type || req.body.type === 'image')){
+        imgur.uploadBase64(req.body.data.substring(req.body.data.indexOf(',') + 1), null, (Date.now()).toString())
+        .catch(e => {
+            res.sendStatus(500);
+        })
+        .then(data => {
+            if (!data) return;
+            client.query(`UPDATE ${getTable(req.body.mode)} SET (threads_bg, thread_bg_br, thread_bg_position, thread_bg_self) = ($1, $2, $3, $4) WHERE token = $5`,
+            [data.link, br, pos, Boolean(req.body.hide || req.body.self), auth_token]).then(result => {
+                res.send(data.link);
+            })
+        })
+    }
+    else if ((req.body.type === 'link' && req.body.data) || req.body.link){
+      isImage(res, req.body.link || req.body.data, () => {
+        client.query(`UPDATE ${getTable(req.body.mode)} SET (threads_bg, thread_bg_br, thread_bg_position, thread_bg_self) = ($1, $2, $3, $4) WHERE token = $5`,
+        [req.body.link || req.body.data, br, pos, Boolean(req.body.hide || req.body.self), auth_token]).then(result => {
+            res.send(req.body.link || req.body.data);
         })
       })
     }
     else{
-      client.query(`UPDATE ${getTable(req.body.mode)} SET (thread_bg_hide, thread_bg_self) = ($1, $2) WHERE token = $3`, [Boolean(req.body.hide), Boolean(req.body.self), auth_token]).then(result => {
-        res.sendStatus(200);
-      })
+        client.query(`UPDATE ${getTable(req.body.mode)} SET thread_bg_self = $1 WHERE token = $2 RETURNING threads_bg`,
+        [Boolean(req.body.hide || req.body.self), auth_token]).then(result => {
+            res.status(200).send(result.rows[0].threads_bg);
+        })
     }
   })
 })
@@ -456,6 +475,32 @@ app.post('/removeThreadBgIgnore', (req, res) => {
       res.sendStatus(200);
     })
   })
+})
+
+app.post('/toggleThreadBgIgnore', (req, res) => {
+    if (!req.body || !req.body.mode){
+        res.sendStatus(400);
+        return;
+    }
+    let auth_token = req.body.token;
+    let t_id = +req.body.id;
+    client.query(`SELECT id, threads_bg_ignore FROM ${getTable(req.body.mode)} WHERE token = $1 LIMIT 1`, [auth_token]).then(result => {
+        if (!result.rowCount || result.rows[0].id === t_id){
+            res.sendStatus(401);
+            return;
+        }
+        if (result.rows[0].threads_bg_ignore.includes(t_id)){
+            client.query(`UPDATE ${getTable(req.body.mode)} SET threads_bg_ignore = array_remove(threads_bg_ignore, $1) WHERE token = $2`, [t_id, auth_token])
+            .then(result => {
+                res.sendStatus(200);
+            })
+        } else {
+            client.query(`UPDATE ${getTable(req.body.mode)} SET threads_bg_ignore = array_append(threads_bg_ignore, $1) WHERE token = $2`, [t_id, auth_token])
+            .then(result => {
+                res.sendStatus(200);
+            })
+        }
+    })
 })
 
 // ------------------------------
@@ -517,7 +562,9 @@ app.post('/updateCustomUserStatus', (req, res) => {
       return;
     }
     let obj = result.rows[0].custom_users_status;
-    obj[req.body.id] = req.body.status;
+    if (req.body.status){
+        obj[req.body.id] = req.body.status;
+    } else delete obj[req.body.id];
     client.query(`UPDATE ${getTable(req.body.mode)} SET custom_users_status = $1 WHERE token = $2`, [obj, req.body.token])
     .catch(e => {
       res.sendStatus(500);
@@ -580,18 +627,13 @@ app.post('/createSmileSection', (req, res) => {
         name: b.name.substring(0, 64),
         image: b.image
       }
-      if (b.order){
-        sections.splice(b.order, 0, section_data)
-      }
-      else{
-        sections.push(section_data)
-      }
+      sections.splice(Math.clamp(0, b.order, 9), 0, section_data);
       client.query(`UPDATE ${getTable(b.mode)} SET custom_smile_sections = $1 WHERE token = $2`, [sections, b.token])
       .catch(e => {
         res.sendStatus(400);
       })
       .then(() => {
-        res.sendStatus(200);
+        res.status(200).send(sections);
       })
     })
   })
@@ -980,7 +1022,9 @@ setInterval(updateServerSmileData, 300000);
 Math.onRange = (min, value, max) => {
   return value >= min && value <= max;
 }
-
+Math.clamp = (min, value, max) => {
+    return Math.max(+min, Math.min(+max, +value))
+  }
 function isImage(res, link, callback){
   if (!link.startsWith('http')){
     res.sendStatus(404);
